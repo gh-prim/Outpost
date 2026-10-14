@@ -127,3 +127,19 @@ export const publishDocsInput = z.object({
 export const organizationSettingsInput = z.object({
   enforceSso: z.boolean(),
 });
+
+export const gitSyncInput = z.object({
+  repoUrl: z.url({ protocol: /^https?$/ }).max(500),
+  branch: z
+    .string()
+    .trim()
+    .regex(/^[\w./-]{1,100}$/)
+    .default("main"),
+  directory: z
+    .string()
+    .trim()
+    .regex(/^[\w-]+(\/[\w-]+)*$/, "Use a relative folder like outpost or api/collections")
+    .default("outpost"),
+  // Omitted keeps the stored token, null removes it.
+  token: z.string().min(1).max(500).nullable().optional(),
+});

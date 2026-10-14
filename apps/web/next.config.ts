@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   output: process.env.OUTPOST_STANDALONE === "1" ? "standalone" : undefined,
   outputFileTracingRoot: path.resolve(import.meta.dirname, "../.."),
   // The collection runtime is CommonJS with dynamic requires: load it from node_modules at runtime.
-  serverExternalPackages: ["postman-runtime", "postman-collection"],
+  serverExternalPackages: ["postman-runtime", "postman-collection", "isomorphic-git"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

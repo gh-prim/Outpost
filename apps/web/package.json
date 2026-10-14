@@ -19,6 +19,7 @@
     "@outpost/ui": "workspace:*",
     "better-auth": "1.7.7",
     "dotenv": "^17.4.2",
+    "isomorphic-git": "1.42.4",
     "marked": "^16.4.2",
     "next": "16.4.0",
     "pg": "^8.23.1",

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { countRequests, toTree, type TreeNode } from "@/lib/collection-tree";
 import { listEnvironments } from "@/server/environments";
+import { getGitSync } from "@/server/git-sync";
 import { listMocks } from "@/server/mocks";
 import { listMonitors } from "@/server/monitors";
 import { HttpError } from "@/server/errors";
@@ -13,6 +14,7 @@ import { hasRole } from "@/server/policy";
 import { getWorkspaceBySlug, listWorkspaceMembers } from "@/server/workspaces";
 import { CollectionActions } from "./collection-actions";
 import { EnvironmentActions } from "./environment-actions";
+import { GitSyncPanel } from "./git-sync-panel";
 import { LiveRefresh } from "./live-refresh";
 import { MockServers } from "./mock-servers";
 import { NewMonitorForm } from "./monitor-actions";
@@ -47,7 +49,7 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
     throw error;
   });
 
-  const [collections, environments, members, orgMembers, teams, monitors, mocks] = await Promise.all([
+  const [collections, environments, members, orgMembers, teams, monitors, mocks, gitSync] = await Promise.all([
     prisma.collection.findMany({
       where: { workspaceId: workspace.id, deletedAt: null },
       select: { id: true, name: true, version: true, content: true },
@@ -62,6 +64,7 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
     prisma.team.findMany({ where: { organizationId: organization.id }, select: { id: true, name: true } }),
     listMonitors(actor, workspace.id),
     listMocks(actor, workspace.id),
+    getGitSync(actor, workspace.id),
   ]);
   const candidates = [
     ...teams.map((t) => ({ value: `team:${t.id}`, label: `Team ${t.name}` })),
@@ -178,6 +181,12 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
             ))}
           </Card>
         )}
+        <GitSyncPanel
+          workspaceId={workspace.id}
+          gitSync={gitSync}
+          canEdit={canEdit}
+          canAdmin={hasRole(workspace.role, "ADMIN")}
+        />
         <WorkspaceMembers
           workspaceId={workspace.id}
           canManage={hasRole(workspace.role, "ADMIN")}
