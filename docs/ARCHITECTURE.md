@@ -13,16 +13,13 @@
                 ┌──────────────────────────────┐
   Desktop app ──┤   Outpost web (Next.js)      │
   (Electron)    │   UI + admin + REST API      │──┐
-                │   + Better Auth              │  │
-  Browser ──────┤                              │  ├── PostgreSQL via Prisma
-                └──────────────────────────────┘  │   (all data)
-                ┌──────────────────────────────┐  │
-  Clients ──────┤  Realtime service (WebSocket)│──┤── Redis (queues, pub/sub)
+                │   + Better Auth              │  ├── PostgreSQL via Prisma
+  Browser ──────┤   + live updates (SSE)       │  │   (data, LISTEN/NOTIFY)
                 └──────────────────────────────┘  │
-  CLI ───── API token                             │── S3-compatible storage
-                        ┌──────────────┐          │   (files, exports)
-                        │   Runners    │──────────┘
-                        │ (N workers)  │  monitors, scheduled runs,
+  CLI ───── API key                               ├── Redis (job queues, later)
+                        ┌──────────────┐          │
+                        │   Runners    │──────────┴── S3-compatible storage
+                        │ (N workers)  │  monitors, scheduled runs,  (later)
                         └──────────────┘  perf tests, hosted mocks
 ```
 
@@ -32,12 +29,12 @@
 
 - Next.js (App Router) serves the whole interface: the API client, collections, workspaces, and the admin console (users, teams, organizations, identity providers, audit logs, settings).
 - REST API in Next.js route handlers, validated with Zod, OpenAPI generated from the schemas. The UI uses only this public API, so everything is scriptable.
-- Server components for admin pages, client components for the request editor (Monaco for scripts and bodies, TanStack Query for data).
+- Server components for admin pages, client components for the request editor.
 - Runs on the default Node.js runtime, self-hosted with `next start` in a container.
 
 ### 2. Database (`packages/db`, Prisma)
 
-- PostgreSQL accessed only through Prisma. The schema lives in `packages/db/prisma/schema.prisma` and is shared by the web app, the realtime service and the runners.
+- PostgreSQL accessed only through Prisma. The schema lives in `packages/db/prisma/schema/` (`auth.prisma` for Better Auth models, `outpost.prisma` for the rest) and is shared by the web app and the runners.
 - Migrations with `prisma migrate`, run automatically at container start.
 - Collection documents stored as JSONB, with a history table for version recovery.
 
@@ -68,11 +65,12 @@ Better Auth runs inside the Next.js app with its Prisma adapter, so users, sessi
 - Org and team roles come from Better Auth's organization plugin. Workspace and element roles (admin, editor, runner, viewer) are Outpost tables in Prisma, assignable to users or teams.
 - One policy function checks every API call, so permission rules live in one place.
 
-### Realtime collaboration (`apps/realtime`)
+### Realtime collaboration
 
-- Small Node.js WebSocket service, separate because Next.js is not built for long-lived connections.
-- Validates the Better Auth session, then each collection is a document with a version number: clients send operations, the service orders them, saves them through Prisma and broadcasts them. Redis pub/sub lets several instances run side by side.
-- Conflicts on the same field are last write wins, with full history kept for recovery.
+- Each workspace has a server-sent events stream (`GET /api/v1/workspaces/:id/events`) served by the Next.js app.
+- Changes are broadcast through PostgreSQL `LISTEN/NOTIFY`, so several app instances behind a load balancer stay in sync without Redis or a separate service.
+- Saves use optimistic concurrency: every collection has a version, a save based on an old version is rejected (409). An editor with no local changes reloads automatically when someone else saves; with local changes it shows who saved and offers to load the new version.
+- Serve Outpost over HTTP/2 (any TLS reverse proxy does it) so open event streams do not hit the browser's 6-connections-per-host limit of HTTP/1.1.
 
 ### Execution engine (`packages/engine`)
 
@@ -95,7 +93,7 @@ Better Auth runs inside the Next.js app with its Prisma adapter, so users, sessi
 ### Storage
 
 - PostgreSQL through Prisma for all structured data, including users, orgs and collection documents.
-- Redis for queues, realtime pub/sub between server instances, and rate limiting.
+- Redis for job queues once runners land. Live updates use PostgreSQL `LISTEN/NOTIFY`.
 - S3-compatible storage (MinIO in the default compose file) for uploaded files, run reports and exports.
 - Secrets: encrypted at rest with a server key, with optional external vaults (HashiCorp Vault, cloud secret managers) later. A local vault on the desktop keeps personal secrets on the device.
 
@@ -104,7 +102,6 @@ Better Auth runs inside the Next.js app with its Prisma adapter, so users, sessi
 ```
 apps/
   web/       Next.js: UI, admin console, REST API, Better Auth
-  realtime/  WebSocket collaboration service
   desktop/   Electron shell
   cli/       command-line runner
   runner/    background workers
@@ -123,9 +120,9 @@ Monorepo with pnpm workspaces and Turborepo.
 
 ## Deployment
 
-- `docker compose up` starts the web app, realtime service, runner, PostgreSQL, Redis and MinIO.
+- `docker compose up` starts PostgreSQL, applies migrations and starts the web app. Runners, Redis and MinIO come later.
 - Configuration via environment variables and an optional YAML file (IdPs, allowed domains, retention).
-- Helm chart for Kubernetes, horizontal scaling of web, realtime and runners.
+- Helm chart for Kubernetes, horizontal scaling of the web app and runners.
 
 ## First milestone (MVP)
 

@@ -11,6 +11,7 @@ import { hasRole } from "@/server/policy";
 import { getWorkspaceBySlug } from "@/server/workspaces";
 import { CollectionActions } from "./collection-actions";
 import { EnvironmentActions } from "./environment-actions";
+import { LiveRefresh } from "./live-refresh";
 
 function Tree({ nodes }: { nodes: TreeNode[] }) {
   return (
@@ -53,6 +54,7 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-8 px-6 py-8 lg:grid-cols-[1fr_18rem]">
       <section>
+        <LiveRefresh workspaceId={workspace.id} />
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold">{workspace.name}</h1>
           {workspace.visibility === "PRIVATE" && <Badge variant="outline">Private</Badge>}

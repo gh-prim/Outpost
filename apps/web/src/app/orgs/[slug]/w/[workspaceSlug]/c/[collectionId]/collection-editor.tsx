@@ -21,6 +21,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { useWorkspaceEvents } from "@/lib/use-workspace-events";
 import {
   type CollectionDocument,
   type Header,
@@ -61,6 +62,26 @@ export function CollectionEditor(props: Props) {
   const [running, setRunning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Set when someone else saved while this tab has unsaved changes.
+  const [newerVersion, setNewerVersion] = useState<{ version: number; by: string } | null>(null);
+
+  const reload = useCallback(async () => {
+    const latest = await apiFetch<{ content: CollectionDocument; version: number }>(
+      `/collections/${props.collectionId}`,
+    );
+    setDocument(latest.content);
+    setVersion(latest.version);
+    setDirty(false);
+    setNewerVersion(null);
+  }, [props.collectionId]);
+
+  useWorkspaceEvents(props.workspaceId, (event) => {
+    if (event.id !== props.collectionId || event.type !== "collection.updated") return;
+    if (!event.version || event.version <= version) return;
+    if (dirty) setNewerVersion({ version: event.version, by: event.actor?.name ?? "Someone" });
+    else void reload();
+  });
 
   const selected = selectedId ? findItem(document.item, selectedId) : undefined;
   const request = selected ? requestOf(selected) : undefined;
@@ -187,6 +208,16 @@ export function CollectionEditor(props: Props) {
           </div>
         </div>
 
+        {newerVersion && (
+          <div className="flex items-center gap-3 border-b bg-warning/10 px-4 py-2">
+            <span>
+              {newerVersion.by} saved a newer version (v{newerVersion.version}). Saving now would fail.
+            </span>
+            <Button variant="outline" size="sm" onClick={() => void reload()}>
+              Load it and drop my changes
+            </Button>
+          </div>
+        )}
         {!selected || !request ? (
           <p className="p-6 text-muted-foreground">Select a request, or add one with +.</p>
         ) : (

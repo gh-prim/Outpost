@@ -1,6 +1,6 @@
 import { prisma } from "@outpost/db";
 import { createAuthMiddleware } from "better-auth/api";
-import { recordAudit } from "@/server/audit";
+import { recordAudit } from "../server/audit";
 
 /** Better Auth endpoints that change who can access what, and their audit action names. */
 const auditedPaths: Record<string, string> = {
@@ -22,6 +22,8 @@ const auditedPaths: Record<string, string> = {
   "/sso/delete-provider": "sso.provider.delete",
   "/sso/verify-domain": "sso.domain.verify",
   "/sign-out": "auth.sign_out",
+  "/api-key/create": "api_key.create",
+  "/api-key/delete": "api_key.delete",
 };
 
 // Body fields worth keeping. Never secrets such as client secrets or certificates.
@@ -57,24 +59,27 @@ export const auditAfterHook = createAuthMiddleware(async (ctx) => {
     session?.session.activeOrganizationId ??
     null;
 
-  await recordAudit({
+  const entry = {
     action,
-    organizationId,
     actorId: session?.user.id ?? null,
     ipAddress: session?.session.ipAddress ?? null,
     userAgent: session?.session.userAgent ?? null,
     metadata,
-  });
+  };
+  // User-level events (API keys, sign-out) belong to every organization of the user.
+  const organizationIds = organizationId ? [organizationId] : await userOrganizationIds(entry.actorId);
+  for (const id of organizationIds) await recordAudit({ ...entry, organizationId: id });
 });
+
+async function userOrganizationIds(userId: string | null): Promise<(string | null)[]> {
+  if (!userId) return [null];
+  const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
+  return memberships.length ? memberships.map((m) => m.organizationId) : [null];
+}
 
 /** Records the sign-in in the audit log of every organization the user belongs to. */
 export async function auditSignIn(session: { userId: string; ipAddress?: string | null; userAgent?: string | null }) {
-  const memberships = await prisma.member.findMany({
-    where: { userId: session.userId },
-    select: { organizationId: true },
-  });
-  const organizationIds = memberships.length ? memberships.map((m) => m.organizationId) : [null];
-  for (const organizationId of organizationIds) {
+  for (const organizationId of await userOrganizationIds(session.userId)) {
     await recordAudit({
       action: "auth.sign_in",
       organizationId,

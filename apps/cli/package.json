@@ -1,0 +1,30 @@
+{
+  "name": "@outpost/cli",
+  "version": "0.1.0",
+  "description": "Run Outpost collections from the command line and CI",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "outpost": "./dist/outpost.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/outpost.js --external:postman-runtime --external:postman-collection --banner:js=\"#!/usr/bin/env node\"",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "postman-collection": "5.3.1",
+    "postman-runtime": "7.56.1"
+  },
+  "devDependencies": {
+    "@outpost/engine": "workspace:*",
+    "@types/node": "^24",
+    "esbuild": "^0.28.2",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}

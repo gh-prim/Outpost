@@ -4,6 +4,7 @@ import type { z } from "zod";
 import { auditContext, recordAudit } from "./audit";
 import type { Actor } from "./context";
 import { HttpError, notFound } from "./errors";
+import { publish } from "./events";
 import { requireWorkspaceRole } from "./policy";
 import type { collectionDocument, createCollectionInput, updateCollectionInput } from "./schemas";
 
@@ -47,6 +48,8 @@ export async function listCollections(actor: Actor, workspaceId: string) {
   });
 }
 
+const actorRef = (actor: Actor) => ({ id: actor.userId, name: actor.name });
+
 export async function createCollection(
   actor: Actor,
   workspaceId: string,
@@ -56,7 +59,7 @@ export async function createCollection(
   const content = normalize("content" in input ? input.content : emptyDocument(input.name));
   const json = content as Prisma.InputJsonValue;
 
-  return prisma.$transaction(async (tx) => {
+  const collection = await prisma.$transaction(async (tx) => {
     const collection = await tx.collection.create({
       data: {
         workspaceId,
@@ -78,6 +81,8 @@ export async function createCollection(
     );
     return collection;
   });
+  await publish({ type: "collection.created", workspaceId, id: collection.id, version: 1, actor: actorRef(actor) });
+  return collection;
 }
 
 export async function getCollection(actor: Actor, collectionId: string) {
@@ -90,12 +95,12 @@ export async function updateCollection(
   collectionId: string,
   input: z.infer<typeof updateCollectionInput>,
 ) {
-  await requireCollection(actor, collectionId, WorkspaceRole.EDITOR);
+  const { workspace } = await requireCollection(actor, collectionId, WorkspaceRole.EDITOR);
   const content = normalize(input.content);
   const json = content as Prisma.InputJsonValue;
   const version = input.baseVersion + 1;
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const { count } = await tx.collection.updateMany({
       where: { id: collectionId, version: input.baseVersion, deletedAt: null },
       data: { content: json, name: content.info.name, version },
@@ -104,6 +109,14 @@ export async function updateCollection(
     await tx.collectionVersion.create({ data: { collectionId, version, content: json, authorId: actor.userId } });
     return tx.collection.findUniqueOrThrow({ where: { id: collectionId } });
   });
+  await publish({
+    type: "collection.updated",
+    workspaceId: workspace.id,
+    id: collectionId,
+    version: updated.version,
+    actor: actorRef(actor),
+  });
+  return updated;
 }
 
 export async function deleteCollection(actor: Actor, collectionId: string) {
@@ -122,6 +135,7 @@ export async function deleteCollection(actor: Actor, collectionId: string) {
       tx,
     );
   });
+  await publish({ type: "collection.deleted", workspaceId: workspace.id, id: collectionId, actor: actorRef(actor) });
 }
 
 export async function listCollectionVersions(actor: Actor, collectionId: string) {

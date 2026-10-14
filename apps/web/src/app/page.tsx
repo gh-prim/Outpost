@@ -20,6 +20,9 @@ async function HomePageContent() {
         <h1 className="text-lg font-semibold">Outpost</h1>
         <div className="flex items-center gap-3">
           <span className="text-muted-foreground">{session.user.email}</span>
+          <Link href="/settings/api-keys" className="text-muted-foreground hover:text-foreground">
+            API keys
+          </Link>
           <SignOutButton />
         </div>
       </header>

@@ -1,3 +1,4 @@
+import { apiKey } from "@better-auth/api-key";
 import { sso } from "@better-auth/sso";
 import { prisma } from "@outpost/db";
 import { betterAuth } from "better-auth";
@@ -68,6 +69,8 @@ export const auth = betterAuth({
       organizationProvisioning: { defaultRole: "member" },
       domainVerification: { enabled: true, tokenPrefix: "outpost-verification" },
     }),
+    // Personal API keys for the CLI and automation. Rate limiting is left to the reverse proxy.
+    apiKey({ defaultPrefix: "opk_", rateLimit: { enabled: false } }),
     nextCookies(),
   ],
 });

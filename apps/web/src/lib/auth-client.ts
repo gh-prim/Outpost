@@ -1,7 +1,12 @@
+import { apiKeyClient } from "@better-auth/api-key/client";
 import { ssoClient } from "@better-auth/sso/client";
 import { organizationClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({
-  plugins: [organizationClient({ teams: { enabled: true } }), ssoClient({ domainVerification: { enabled: true } })],
+  plugins: [
+    organizationClient({ teams: { enabled: true } }),
+    ssoClient({ domainVerification: { enabled: true } }),
+    apiKeyClient(),
+  ],
 });

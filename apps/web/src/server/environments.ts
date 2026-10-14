@@ -4,12 +4,17 @@ import { auditContext, recordAudit } from "./audit";
 import type { Actor } from "./context";
 import { decryptSecret, encryptSecret } from "./crypto";
 import { HttpError, notFound } from "./errors";
+import { publish } from "./events";
 import { hasRole, requireWorkspaceRole } from "./policy";
 import type { createEnvironmentInput, environmentValue, updateEnvironmentInput } from "./schemas";
 
 type EnvironmentValue = z.infer<typeof environmentValue>;
 
 const MASK = "••••••••";
+
+function notifyChange(actor: Actor, workspaceId: string, id: string) {
+  return publish({ type: "environment.changed", workspaceId, id, actor: { id: actor.userId, name: actor.name } });
+}
 
 function encryptValues(values: EnvironmentValue[]) {
   return values.map((v) => (v.type === "secret" ? { ...v, value: encryptSecret(v.value) } : v));
@@ -45,7 +50,7 @@ export async function createEnvironment(
   input: z.infer<typeof createEnvironmentInput>,
 ) {
   const { workspace, role } = await requireWorkspaceRole(actor.userId, workspaceId, WorkspaceRole.EDITOR);
-  return prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     const environment = await tx.environment.create({
       data: { workspaceId, name: input.name, values: encryptValues(input.values) },
     });
@@ -62,6 +67,8 @@ export async function createEnvironment(
     );
     return { ...environment, values: revealValues(environment.values, role) };
   });
+  await notifyChange(actor, workspaceId, created.id);
+  return created;
 }
 
 export async function getEnvironment(actor: Actor, environmentId: string) {
@@ -74,7 +81,7 @@ export async function updateEnvironment(
   environmentId: string,
   input: z.infer<typeof updateEnvironmentInput>,
 ) {
-  const { role } = await requireEnvironment(actor, environmentId, WorkspaceRole.EDITOR);
+  const { role, workspace } = await requireEnvironment(actor, environmentId, WorkspaceRole.EDITOR);
   const { count } = await prisma.environment.updateMany({
     where: { id: environmentId, version: input.baseVersion },
     data: {
@@ -85,6 +92,7 @@ export async function updateEnvironment(
   });
   if (count === 0) throw new HttpError(409, "The environment was changed by someone else. Reload and try again.");
   const environment = await prisma.environment.findUniqueOrThrow({ where: { id: environmentId } });
+  await notifyChange(actor, workspace.id, environmentId);
   return { ...environment, values: revealValues(environment.values, role) };
 }
 
@@ -104,4 +112,5 @@ export async function deleteEnvironment(actor: Actor, environmentId: string) {
       tx,
     );
   });
+  await notifyChange(actor, workspace.id, environmentId);
 }
