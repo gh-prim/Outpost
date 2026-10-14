@@ -1,0 +1,21 @@
+{
+  "name": "@outpost/runner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "@outpost/db": "workspace:*",
+    "@outpost/engine": "workspace:*",
+    "dotenv": "^17",
+    "tsx": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,51 @@
+"use client";
+
+import { Button, Input } from "@outpost/ui";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { authClient } from "@/lib/auth-client";
+
+function toSlug(name: string) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function CreateOrganizationForm() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    const { error } = await authClient.organization.create({ name, slug: toSlug(name) });
+    setPending(false);
+    if (error) {
+      setError(error.message ?? "Could not create the organization");
+      return;
+    }
+    setName("");
+    router.refresh();
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="mt-6 flex gap-2">
+      <Input
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        placeholder="New organization name"
+        required
+        className="flex-1"
+      />
+      <Button type="submit" disabled={pending || !toSlug(name)}>
+        Create
+      </Button>
+      {error && <p className="self-center text-sm text-destructive">{error}</p>}
+    </form>
+  );
+}

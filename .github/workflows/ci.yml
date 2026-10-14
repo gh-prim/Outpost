@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: outpost
+          POSTGRES_PASSWORD: outpost
+          POSTGRES_DB: outpost
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U outpost" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://outpost:outpost@localhost:5432/outpost
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else
+      TEST_DATABASE_URL: postgresql://outpost:outpost@localhost:5432/outpost_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations
+        run: pnpm --filter @outpost/db migrate:deploy
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - name: Build
+        run: pnpm --filter web build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build images
+        run: |
+          docker build --target runner -t outpost-web .
+          docker build --target worker -t outpost-worker .

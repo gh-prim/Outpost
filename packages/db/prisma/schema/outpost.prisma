@@ -1,0 +1,210 @@
+// Outpost domain models. Auth models (users, organizations, teams) live in auth.prisma.
+
+enum WorkspaceVisibility {
+  PRIVATE // only explicit members
+  ORGANIZATION // every member of the organization can view
+}
+
+enum WorkspaceRole {
+  ADMIN // manage members and settings
+  EDITOR // edit collections and environments
+  RUNNER // run collections, cannot edit
+  VIEWER // read only
+}
+
+model Workspace {
+  id             String              @id @default(cuid())
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  slug           String
+  description    String?
+  visibility     WorkspaceVisibility @default(ORGANIZATION)
+  createdById    String?
+  createdBy      User?               @relation("WorkspaceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  archivedAt     DateTime?
+
+  members      WorkspaceMember[]
+  collections  Collection[]
+  environments Environment[]
+  monitors     Monitor[]
+  mockServers  MockServer[]
+
+  @@unique([organizationId, slug])
+  @@map("workspace")
+}
+
+// A member is either a user or a whole team.
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId      String?
+  team        Team?         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole @default(EDITOR)
+  createdAt   DateTime      @default(now())
+
+  @@unique([workspaceId, userId])
+  @@unique([workspaceId, teamId])
+  @@index([userId])
+  @@index([teamId])
+  @@map("workspaceMember")
+}
+
+// `content` holds a collection document compatible with Collection Format v2.1.
+// `version` increases on every change and is used for optimistic concurrency.
+model Collection {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  content     Json
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  versions    CollectionVersion[]
+  monitors    Monitor[]
+  mockServers MockServer[]
+  docs        DocsPublication?
+
+  @@index([workspaceId])
+  @@map("collection")
+}
+
+// Full snapshot of every saved version, for history and recovery.
+model CollectionVersion {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  version      Int
+  content      Json
+  authorId     String?
+  author       User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt    DateTime   @default(now())
+
+  @@unique([collectionId, version])
+  @@map("collectionVersion")
+}
+
+// `values` is a list of { key, value, type, enabled }. Secret values are encrypted at rest.
+model Environment {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  values      Json      @default("[]")
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+  @@map("environment")
+}
+
+// Append-only record of security-relevant actions.
+model AuditLog {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actorId        String?
+  actor          User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action         String // e.g. "workspace.create", "auth.sign_in"
+  targetType     String?
+  targetId       String?
+  metadata       Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("auditLog")
+}
+
+// Scheduled run of a collection. The runner worker claims due monitors with SKIP LOCKED,
+// so several workers can run side by side.
+model Monitor {
+  id              String     @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  collectionId    String
+  collection      Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  environmentId   String?
+  name            String
+  intervalMinutes Int
+  enabled         Boolean    @default(true)
+  // Called with a JSON summary when a run fails or recovers (Slack and Teams incoming webhooks work).
+  webhookUrl      String?
+  nextRunAt       DateTime   @default(now())
+  lastStatus      String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  runs MonitorRun[]
+
+  @@index([enabled, nextRunAt])
+  @@index([workspaceId])
+  @@map("monitor")
+}
+
+model MonitorRun {
+  id          String   @id @default(cuid())
+  monitorId   String
+  monitor     Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status      String // passed, failed or error
+  requests    Int
+  failedTests Int
+  totalTests  Int
+  durationMs  Int
+  // Per request: name, method, url, status code, time, failed test names. No bodies.
+  summary     Json
+  error       String?
+  startedAt   DateTime
+  finishedAt  DateTime @default(now())
+
+  @@index([monitorId, startedAt])
+  @@map("monitorRun")
+}
+
+// Answers HTTP calls at /mock/<id>/... with the examples saved in a collection.
+model MockServer {
+  id            String     @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  collectionId  String
+  collection    Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  environmentId String?
+  name          String
+  // Private mocks require an API key of someone who can view the workspace.
+  isPrivate     Boolean    @default(true)
+  // Artificial latency, to test clients against slow APIs.
+  delayMs       Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([workspaceId])
+  @@map("mockServer")
+}
+
+// Public documentation generated from a collection, served at /docs/<slug>.
+model DocsPublication {
+  id            String     @id @default(cuid())
+  collectionId  String     @unique
+  collection    Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  slug          String     @unique
+  // Non-secret values of this environment are shown in place of {{variables}}.
+  environmentId String?
+  title         String?
+  logoUrl       String?
+  accentColor   String?
+  publishedAt   DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@map("docsPublication")
+}

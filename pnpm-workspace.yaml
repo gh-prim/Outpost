@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - electron
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma
+
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

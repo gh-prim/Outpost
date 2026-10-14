@@ -1,0 +1,58 @@
+# Production-style deployment: PostgreSQL, migrations, the Outpost web app and its worker.
+# 1. cp .env.example .env and fill it in (BETTER_AUTH_SECRET, BETTER_AUTH_URL, POSTGRES_PASSWORD, Google or SSO settings)
+# 2. docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: outpost
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: outpost
+    volumes:
+      - outpost-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outpost -d outpost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ..
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://outpost:${POSTGRES_PASSWORD}@postgres:5432/outpost
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      target: runner
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql://outpost:${POSTGRES_PASSWORD}@postgres:5432/outpost
+    ports:
+      - "${OUTPOST_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: ..
+      target: worker
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql://outpost:${POSTGRES_PASSWORD}@postgres:5432/outpost
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  outpost-pg:

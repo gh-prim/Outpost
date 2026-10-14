@@ -1,0 +1,14 @@
+{
+  "name": "outpost",
+  "private": true,
+  "packageManager": "pnpm@10.33.3",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @outpost/db migrate:dev",
+    "db:generate": "pnpm --filter @outpost/db generate",
+    "test": "pnpm -r test"
+  }
+}
