@@ -1,4 +1,4 @@
-import { Button, Card } from "@outpost/ui";
+import { Card } from "@outpost/ui";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -31,15 +31,14 @@ async function HomePageContent() {
         ) : (
           <Card className="mt-3 divide-y divide-border">
             {organizations.map((org) => (
-              <div key={org.id} className="flex items-center justify-between px-4 py-3">
-                <span>
-                  <span className="font-medium">{org.name}</span>
-                  <span className="ml-2 text-muted-foreground">{org.slug}</span>
-                </span>
-                <Button asChild variant="ghost" size="sm">
-                  <Link href={`/orgs/${org.slug}/sso`}>SSO settings</Link>
-                </Button>
-              </div>
+              <Link
+                key={org.id}
+                href={`/orgs/${org.slug}`}
+                className="flex items-center justify-between px-4 py-3 hover:bg-muted"
+              >
+                <span className="font-medium">{org.name}</span>
+                <span className="text-muted-foreground">{org.slug}</span>
+              </Link>
             ))}
           </Card>
         )}

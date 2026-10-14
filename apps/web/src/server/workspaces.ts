@@ -62,16 +62,21 @@ export async function createWorkspace(actor: Actor, input: z.infer<typeof create
   });
 }
 
+export async function getWorkspaceBySlug(actor: Actor, organizationId: string, slug: string) {
+  const workspace = await prisma.workspace.findUnique({
+    where: { organizationId_slug: { organizationId, slug } },
+    select: { id: true },
+  });
+  if (!workspace) throw notFound("Workspace");
+  return getWorkspace(actor, workspace.id);
+}
+
 export async function getWorkspace(actor: Actor, workspaceId: string) {
   const { workspace, role } = await requireWorkspaceRole(actor.userId, workspaceId, WorkspaceRole.VIEWER);
   return { ...workspace, role };
 }
 
-export async function updateWorkspace(
-  actor: Actor,
-  workspaceId: string,
-  input: z.infer<typeof updateWorkspaceInput>,
-) {
+export async function updateWorkspace(actor: Actor, workspaceId: string, input: z.infer<typeof updateWorkspaceInput>) {
   await requireWorkspaceRole(actor.userId, workspaceId, WorkspaceRole.ADMIN);
   return prisma.$transaction(async (tx) => {
     const workspace = await tx.workspace.update({ where: { id: workspaceId }, data: input });

@@ -18,7 +18,10 @@ export function encryptSecret(plaintext: string) {
 
 export function decryptSecret(value: string) {
   if (!value.startsWith(PREFIX)) return value;
-  const [iv, tag, ciphertext] = value.slice(PREFIX.length).split(".").map((p) => Buffer.from(p, "base64url"));
+  const [iv, tag, ciphertext] = value
+    .slice(PREFIX.length)
+    .split(".")
+    .map((p) => Buffer.from(p, "base64url"));
   const decipher = createDecipheriv("aes-256-gcm", key(), iv);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");

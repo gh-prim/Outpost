@@ -25,7 +25,18 @@ const auditedPaths: Record<string, string> = {
 };
 
 // Body fields worth keeping. Never secrets such as client secrets or certificates.
-const keptBodyFields = ["organizationId", "memberId", "userId", "email", "role", "teamId", "name", "slug", "providerId", "domain"];
+const keptBodyFields = [
+  "organizationId",
+  "memberId",
+  "userId",
+  "email",
+  "role",
+  "teamId",
+  "name",
+  "slug",
+  "providerId",
+  "domain",
+];
 
 function pick(body: unknown) {
   if (!body || typeof body !== "object") return undefined;
