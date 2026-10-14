@@ -3,9 +3,27 @@
 import { cn } from "@outpost/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { authClient } from "@/lib/auth-client";
 
-export function OrgNav({ slug, name, isAdmin }: { slug: string; name: string; isAdmin: boolean }) {
+export function OrgNav({
+  organizationId,
+  slug,
+  name,
+  isAdmin,
+}: {
+  organizationId: string;
+  slug: string;
+  name: string;
+  isAdmin: boolean;
+}) {
   const pathname = usePathname();
+
+  // Team management and audit attribution use the session's active organization.
+  useEffect(() => {
+    void authClient.organization.setActive({ organizationId });
+  }, [organizationId]);
+
   const links = [
     {
       href: `/orgs/${slug}`,
@@ -14,6 +32,11 @@ export function OrgNav({ slug, name, isAdmin }: { slug: string; name: string; is
     },
     ...(isAdmin
       ? [
+          {
+            href: `/orgs/${slug}/members`,
+            label: "Members",
+            match: (p: string) => p.startsWith(`/orgs/${slug}/members`),
+          },
           {
             href: `/orgs/${slug}/sso`,
             label: "Single sign-on",

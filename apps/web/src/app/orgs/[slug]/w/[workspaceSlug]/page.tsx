@@ -8,10 +8,11 @@ import { listEnvironments } from "@/server/environments";
 import { HttpError } from "@/server/errors";
 import { getPageOrganization } from "@/server/page";
 import { hasRole } from "@/server/policy";
-import { getWorkspaceBySlug } from "@/server/workspaces";
+import { getWorkspaceBySlug, listWorkspaceMembers } from "@/server/workspaces";
 import { CollectionActions } from "./collection-actions";
 import { EnvironmentActions } from "./environment-actions";
 import { LiveRefresh } from "./live-refresh";
+import { WorkspaceMembers } from "./workspace-members";
 
 function Tree({ nodes }: { nodes: TreeNode[] }) {
   return (
@@ -41,14 +42,24 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
     throw error;
   });
 
-  const [collections, environments] = await Promise.all([
+  const [collections, environments, members, orgMembers, teams] = await Promise.all([
     prisma.collection.findMany({
       where: { workspaceId: workspace.id, deletedAt: null },
       select: { id: true, name: true, version: true, content: true },
       orderBy: { name: "asc" },
     }),
     listEnvironments(actor, workspace.id),
+    listWorkspaceMembers(actor, workspace.id),
+    prisma.member.findMany({
+      where: { organizationId: organization.id },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    }),
+    prisma.team.findMany({ where: { organizationId: organization.id }, select: { id: true, name: true } }),
   ]);
+  const candidates = [
+    ...teams.map((t) => ({ value: `team:${t.id}`, label: `Team ${t.name}` })),
+    ...orgMembers.map((m) => ({ value: `user:${m.user.id}`, label: `${m.user.name} (${m.user.email})` })),
+  ];
   const canEdit = hasRole(workspace.role, "EDITOR");
 
   return (
@@ -112,6 +123,12 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
             ))}
           </Card>
         )}
+        <WorkspaceMembers
+          workspaceId={workspace.id}
+          canManage={hasRole(workspace.role, "ADMIN")}
+          members={members}
+          candidates={candidates}
+        />
       </aside>
     </div>
   );

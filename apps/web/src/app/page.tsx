@@ -1,4 +1,5 @@
-import { Card } from "@outpost/ui";
+import { prisma } from "@outpost/db";
+import { Button, Card } from "@outpost/ui";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -12,7 +13,13 @@ async function HomePageContent() {
   const session = await auth.api.getSession({ headers: requestHeaders });
   if (!session) redirect("/sign-in");
 
-  const organizations = await auth.api.listOrganizations({ headers: requestHeaders });
+  const [organizations, invitations] = await Promise.all([
+    auth.api.listOrganizations({ headers: requestHeaders }),
+    prisma.invitation.findMany({
+      where: { email: session.user.email, status: "pending", expiresAt: { gt: new Date() } },
+      include: { organization: { select: { name: true } } },
+    }),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-6">
@@ -26,6 +33,25 @@ async function HomePageContent() {
           <SignOutButton />
         </div>
       </header>
+
+      {invitations.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-base font-medium">Invitations</h2>
+          <Card className="mt-3 divide-y divide-border">
+            {invitations.map((invitation) => (
+              <div key={invitation.id} className="flex items-center justify-between px-4 py-3">
+                <span>
+                  Join <span className="font-medium">{invitation.organization.name}</span> as{" "}
+                  {invitation.role ?? "member"}
+                </span>
+                <Button asChild size="sm">
+                  <Link href={`/invitations/${invitation.id}`}>View</Link>
+                </Button>
+              </div>
+            ))}
+          </Card>
+        </section>
+      )}
 
       <section className="mt-10">
         <h2 className="text-base font-medium">Organizations</h2>

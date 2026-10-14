@@ -53,7 +53,12 @@ export async function revokeScimCredential(actor: Actor, organizationId: string,
   const { connection } = await getScimConnection(actor, organizationId);
   if (!connection) return;
   await auth.api.revokeSCIMManagedCredential({
-    body: { connectionId: connection.connectionId, provisioningDomainId: organizationId, credentialId, actorId: actor.userId },
+    body: {
+      connectionId: connection.connectionId,
+      provisioningDomainId: organizationId,
+      credentialId,
+      actorId: actor.userId,
+    },
   });
   await recordAudit({
     ...auditContext(actor),
