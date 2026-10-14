@@ -7,6 +7,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
 import { auditAfterHook, auditSignIn } from "./auth-audit";
+import { scimPlugin } from "./auth-scim";
 
 const allowedGoogleDomains = (process.env.GOOGLE_ALLOWED_DOMAINS ?? "")
   .split(",")
@@ -27,7 +28,8 @@ const ssoTrustedOrigins = (process.env.SSO_TRUSTED_ORIGINS ?? "")
 
 export const auth = betterAuth({
   trustedOrigins: ssoTrustedOrigins,
-  database: prismaAdapter(prisma, { provider: "postgresql" }),
+  // Transactions are required by SCIM provisioning and keep multi-step auth writes consistent.
+  database: prismaAdapter(prisma, { provider: "postgresql", transaction: true }),
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -71,6 +73,7 @@ export const auth = betterAuth({
     }),
     // Personal API keys for the CLI and automation. Rate limiting is left to the reverse proxy.
     apiKey({ defaultPrefix: "opk_", rateLimit: { enabled: false } }),
+    scimPlugin,
     nextCookies(),
   ],
 });

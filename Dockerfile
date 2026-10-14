@@ -22,7 +22,7 @@ FROM deps AS build
 COPY . .
 RUN pnpm rebuild && pnpm --filter @outpost/db generate
 # Placeholders so modules that read configuration at import time can load during the build.
-RUN BETTER_AUTH_SECRET=build-only-placeholder DATABASE_URL=postgresql://build:build@localhost/build \
+RUN OUTPOST_STANDALONE=1 BETTER_AUTH_SECRET=build-only-placeholder DATABASE_URL=postgresql://build:build@localhost/build \
   pnpm --filter web build
 
 FROM build AS migrate

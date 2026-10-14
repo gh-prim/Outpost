@@ -6,8 +6,8 @@ import type { NextConfig } from "next";
 config({ path: path.resolve(import.meta.dirname, "../../.env"), quiet: true });
 
 const nextConfig: NextConfig = {
-  // Self-contained server build for the Docker image.
-  output: "standalone",
+  // Self-contained server build, used by the Docker image (`next start` does not serve it).
+  output: process.env.OUTPOST_STANDALONE === "1" ? "standalone" : undefined,
   outputFileTracingRoot: path.resolve(import.meta.dirname, "../.."),
   // The collection runtime is CommonJS with dynamic requires: load it from node_modules at runtime.
   serverExternalPackages: ["postman-runtime", "postman-collection"],

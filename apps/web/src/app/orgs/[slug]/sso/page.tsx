@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { getPageOrganization } from "@/server/page";
 import { ProviderList } from "./provider-list";
 import { RegisterProviderForm } from "./register-provider-form";
+import { ScimPanel } from "./scim-panel";
 
 async function SsoSettingsContent({ params }: { params: PageProps<"/orgs/[slug]/sso">["params"] }) {
   const { slug } = await params;
@@ -24,13 +25,14 @@ async function SsoSettingsContent({ params }: { params: PageProps<"/orgs/[slug]/
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-8">
       <div className="max-w-3xl">
-        <h1 className="text-lg font-semibold">Single sign-on</h1>
+        <h1 className="text-lg font-semibold">Single sign-on and provisioning</h1>
         <p className="mt-2 text-muted-foreground">
           Users whose email matches a verified domain are sent to your identity provider when they sign in. New users
           are added to this organization automatically.
         </p>
         <ProviderList providers={orgProviders} baseURL={baseURL} />
         <RegisterProviderForm organizationId={organization.id} baseURL={baseURL} />
+        <ScimPanel organizationId={organization.id} />
       </div>
     </div>
   );
