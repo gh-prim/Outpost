@@ -22,6 +22,8 @@ model User {
   members       Member[]
   invitations   Invitation[]
 
+  ssoproviders SsoProvider[]
+
   @@unique([email])
   @@map("user")
 }
@@ -150,4 +152,20 @@ model Invitation {
   @@index([organizationId])
   @@index([email])
   @@map("invitation")
+}
+
+model SsoProvider {
+  id             String   @id
+  issuer         String
+  oidcConfig     String?
+  samlConfig     String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId     String
+  organizationId String?
+  domain         String
+  domainVerified Boolean?
+
+  @@unique([providerId])
+  @@map("ssoProvider")
 }

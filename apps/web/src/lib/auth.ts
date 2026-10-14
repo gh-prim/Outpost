@@ -1,6 +1,7 @@
+import { sso } from "@better-auth/sso";
 import { prisma } from "@outpost/db";
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
@@ -16,7 +17,14 @@ export function isAllowedEmail(email: string) {
   return allowedGoogleDomains.includes(domain);
 }
 
+// OIDC providers are only contacted on origins listed here (protects against SSRF).
+const ssoTrustedOrigins = (process.env.SSO_TRUSTED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 export const auth = betterAuth({
+  trustedOrigins: ssoTrustedOrigins,
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   socialProviders: {
     google: {
@@ -39,7 +47,24 @@ export const auth = betterAuth({
       },
     },
   },
-  plugins: [organization({ teams: { enabled: true } }), nextCookies()],
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      // SSO providers always belong to an organization, so only its owners and admins manage them.
+      if (ctx.path === "/sso/register" && !ctx.body?.organizationId) {
+        throw new APIError("BAD_REQUEST", {
+          message: "An SSO provider must be linked to an organization.",
+        });
+      }
+    }),
+  },
+  plugins: [
+    organization({ teams: { enabled: true } }),
+    sso({
+      organizationProvisioning: { defaultRole: "member" },
+      domainVerification: { enabled: true, tokenPrefix: "outpost-verification" },
+    }),
+    nextCookies(),
+  ],
 });
 
 export type Session = typeof auth.$Infer.Session;

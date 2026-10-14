@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { CreateOrganizationForm } from "./create-organization-form";
@@ -29,9 +30,14 @@ async function HomePageContent() {
         ) : (
           <ul className="mt-3 divide-y divide-neutral-200 rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
             {organizations.map((org) => (
-              <li key={org.id} className="px-4 py-3 text-sm">
-                <span className="font-medium">{org.name}</span>
-                <span className="ml-2 text-neutral-500">{org.slug}</span>
+              <li key={org.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                <span>
+                  <span className="font-medium">{org.name}</span>
+                  <span className="ml-2 text-neutral-500">{org.slug}</span>
+                </span>
+                <Link href={`/orgs/${org.slug}/sso`} className="text-neutral-500 underline-offset-4 hover:underline">
+                  SSO settings
+                </Link>
               </li>
             ))}
           </ul>
