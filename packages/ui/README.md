@@ -31,3 +31,15 @@ For non-CSS contexts (Monaco themes, charts), import raw values from `@outpost/u
 | `src/styles/tokens.css` | CSS variables for both themes |
 | `src/styles/theme.css` | Tailwind v4 theme mapping, fonts, base styles |
 | `src/tokens.ts` | Same values as TypeScript constants |
+| `src/components/*` | Base components (shadcn/ui style, built on Radix) |
+
+## Components
+
+Button, Input, Textarea, Label, Select, Checkbox, Switch, Tabs, Dialog, DropdownMenu, Tooltip, Card, Badge, Separator, Kbd, Spinner, plus two Outpost specific ones:
+
+- `MethodBadge`: HTTP method label colored per method (`<MethodBadge method="DELETE" short />`).
+- `StatusBadge`: response status colored by class (`<StatusBadge code={404} text="Not Found" />`).
+
+```tsx
+import { Button, MethodBadge } from "@outpost/ui";
+```
