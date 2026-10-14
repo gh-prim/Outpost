@@ -15,7 +15,7 @@ Status legend: `done` (available now), `partial` (works, with the noted gaps), `
 | Import/export of existing collections (Collection Format v2.1) and environments | done (collections export through the API) |
 | Specs (OpenAPI, AsyncAPI) editor and import | partial: OpenAPI 3 import |
 | Mock servers | done (from saved examples, public or API key) |
-| Native Git sync for collections | planned |
+| Native Git sync for collections | done (push and pull to any HTTPS Git server) |
 | Visual workflows (request chaining) | planned |
 | Automated workflows (scheduled and triggered) | planned |
 | Private package library (shared scripts) | planned |

@@ -31,6 +31,7 @@ model Workspace {
   environments Environment[]
   monitors     Monitor[]
   mockServers  MockServer[]
+  gitSync      GitSync?
 
   @@unique([organizationId, slug])
   @@map("workspace")
@@ -207,4 +208,23 @@ model DocsPublication {
   updatedAt     DateTime   @updatedAt
 
   @@map("docsPublication")
+}
+
+// Keeps a workspace's collections and environments in a Git repository (one JSON file each).
+model GitSync {
+  id           String    @id @default(cuid())
+  workspaceId  String    @unique
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  // HTTPS URL of the repository, e.g. https://github.com/acme/api-collections.git
+  repoUrl      String
+  branch       String    @default("main")
+  directory    String    @default("outpost")
+  // Personal access token with read and write access, encrypted at rest.
+  token        String?
+  lastCommit   String?
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("gitSync")
 }
