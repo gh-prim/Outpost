@@ -8,6 +8,7 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "db:migrate": "pnpm --filter @outpost/db migrate:dev",
-    "db:generate": "pnpm --filter @outpost/db generate"
+    "db:generate": "pnpm --filter @outpost/db generate",
+    "test": "pnpm -r test"
   }
 }

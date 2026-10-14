@@ -12,6 +12,7 @@
   "dependencies": {
     "@better-auth/sso": "1.7.7",
     "@outpost/db": "workspace:*",
+    "@outpost/engine": "workspace:*",
     "@outpost/ui": "workspace:*",
     "better-auth": "1.7.7",
     "dotenv": "^17.4.2",

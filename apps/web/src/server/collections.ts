@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { prisma, type Prisma, WorkspaceRole } from "@outpost/db";
 import type { z } from "zod";
 import { auditContext, recordAudit } from "./audit";
@@ -9,6 +10,21 @@ import type { collectionDocument, createCollectionInput, updateCollectionInput }
 const SCHEMA_V21 = "https://schema.getpostman.com/json/collection/v2.1.0/collection.json";
 
 type CollectionDocument = z.infer<typeof collectionDocument>;
+
+/** Gives every folder and request a stable id, so the editor and the runner can target them. */
+function withItemIds<T>(items: T): T {
+  if (!Array.isArray(items)) return items;
+  return items.map((item) => {
+    if (!item || typeof item !== "object") return item;
+    const node = item as { id?: unknown; item?: unknown };
+    const id = typeof node.id === "string" && node.id ? node.id : randomUUID();
+    return node.item === undefined ? { ...node, id } : { ...node, id, item: withItemIds(node.item) };
+  }) as T;
+}
+
+function normalize(content: CollectionDocument): CollectionDocument {
+  return { ...content, item: withItemIds(content.item) };
+}
 
 function emptyDocument(name: string): CollectionDocument {
   return { info: { name, schema: SCHEMA_V21 }, item: [] };
@@ -37,7 +53,7 @@ export async function createCollection(
   input: z.infer<typeof createCollectionInput>,
 ) {
   const { workspace } = await requireWorkspaceRole(actor.userId, workspaceId, WorkspaceRole.EDITOR);
-  const content = "content" in input ? input.content : emptyDocument(input.name);
+  const content = normalize("content" in input ? input.content : emptyDocument(input.name));
   const json = content as Prisma.InputJsonValue;
 
   return prisma.$transaction(async (tx) => {
@@ -75,13 +91,14 @@ export async function updateCollection(
   input: z.infer<typeof updateCollectionInput>,
 ) {
   await requireCollection(actor, collectionId, WorkspaceRole.EDITOR);
-  const json = input.content as Prisma.InputJsonValue;
+  const content = normalize(input.content);
+  const json = content as Prisma.InputJsonValue;
   const version = input.baseVersion + 1;
 
   return prisma.$transaction(async (tx) => {
     const { count } = await tx.collection.updateMany({
       where: { id: collectionId, version: input.baseVersion, deletedAt: null },
-      data: { content: json, name: input.content.info.name, version },
+      data: { content: json, name: content.info.name, version },
     });
     if (count === 0) throw new HttpError(409, "The collection was changed by someone else. Reload and try again.");
     await tx.collectionVersion.create({ data: { collectionId, version, content: json, authorId: actor.userId } });

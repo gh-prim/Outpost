@@ -1,5 +1,6 @@
 import { Badge, Card, MethodBadge } from "@outpost/ui";
 import { prisma } from "@outpost/db";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { countRequests, toTree, type TreeNode } from "@/lib/collection-tree";
@@ -50,7 +51,7 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
   const canEdit = hasRole(workspace.role, "EDITOR");
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_18rem]">
+    <div className="mx-auto grid w-full max-w-5xl gap-8 px-6 py-8 lg:grid-cols-[1fr_18rem]">
       <section>
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold">{workspace.name}</h1>
@@ -71,7 +72,12 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
               return (
                 <Card key={collection.id} className="p-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{collection.name}</span>
+                    <Link
+                      href={`/orgs/${slug}/w/${workspaceSlug}/c/${collection.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {collection.name}
+                    </Link>
                     <span className="text-xs text-muted-foreground">
                       {countRequests(tree)} requests · v{collection.version}
                     </span>

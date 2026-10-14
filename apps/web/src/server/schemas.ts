@@ -59,3 +59,11 @@ export const updateEnvironmentInput = z.object({
   values: z.array(environmentValue).optional(),
   baseVersion: z.number().int().positive(),
 });
+
+export const runInput = z.object({
+  workspaceId: z.string().min(1),
+  collection: collectionDocument,
+  itemId: z.string().optional(),
+  environmentId: z.string().optional(),
+  iterationData: z.array(z.record(z.string(), z.unknown())).max(10_000).optional(),
+});

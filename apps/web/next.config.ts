@@ -6,6 +6,8 @@ import type { NextConfig } from "next";
 config({ path: path.resolve(import.meta.dirname, "../../.env"), quiet: true });
 
 const nextConfig: NextConfig = {
+  // The collection runtime is CommonJS with dynamic requires: load it from node_modules at runtime.
+  serverExternalPackages: ["postman-runtime", "postman-collection"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

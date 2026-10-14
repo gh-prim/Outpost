@@ -9,13 +9,17 @@ async function AuditContent({ params }: { params: PageProps<"/orgs/[slug]/audit"
   const { slug } = await params;
   const { organization, role } = await getPageOrganization(slug);
   if (role !== "admin") {
-    return <p className="text-muted-foreground">Only organization owners and admins can read the audit log.</p>;
+    return (
+      <p className="mx-auto w-full max-w-5xl px-6 py-8 text-muted-foreground">
+        Only organization owners and admins can read the audit log.
+      </p>
+    );
   }
 
   const { entries } = await listAuditLogs(organization.id, { limit: 200 });
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-5xl px-6 py-8">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Audit log</h1>
         <Button asChild variant="outline" size="sm">

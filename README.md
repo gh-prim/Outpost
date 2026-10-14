@@ -24,6 +24,8 @@ Google login: create an OAuth client ID (type "Web application") in the Google C
 
 - `apps/web`: Next.js app (UI, admin, API) with Better Auth (Google login, organizations, teams)
 - `packages/db`: Prisma schema, migrations and client for PostgreSQL
+- `packages/engine`: runs collections (Collection Format v2.1, `pm.*` scripts and tests) on the open source collection runtime, with outbound blocking of cloud metadata endpoints
+- `packages/ui`: design system
 
 ## License
 

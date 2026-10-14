@@ -14,7 +14,7 @@ export default function OrgLayout({ children, params }: LayoutProps<"/orgs/[slug
       <Suspense fallback={<div className="h-12 border-b" />}>
         <OrgHeader params={params} />
       </Suspense>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</main>
+      <main className="flex flex-1 flex-col">{children}</main>
     </>
   );
 }
