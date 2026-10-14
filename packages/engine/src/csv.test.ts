@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseCsv } from "./data";
+import { parseCsv } from "./csv";
 
 test("parses CSV with quotes, commas and newlines in fields", () => {
   const csv = 'name,note\r\nalice,"hello, world"\nbob,"multi\nline ""quoted"""\n\n';
