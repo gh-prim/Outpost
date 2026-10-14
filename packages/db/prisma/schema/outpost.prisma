@@ -71,6 +71,7 @@ model Collection {
   versions    CollectionVersion[]
   monitors    Monitor[]
   mockServers MockServer[]
+  docs        DocsPublication?
 
   @@index([workspaceId])
   @@map("collection")
@@ -189,4 +190,21 @@ model MockServer {
 
   @@index([workspaceId])
   @@map("mockServer")
+}
+
+// Public documentation generated from a collection, served at /docs/<slug>.
+model DocsPublication {
+  id            String     @id @default(cuid())
+  collectionId  String     @unique
+  collection    Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  slug          String     @unique
+  // Non-secret values of this environment are shown in place of {{variables}}.
+  environmentId String?
+  title         String?
+  logoUrl       String?
+  accentColor   String?
+  publishedAt   DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@map("docsPublication")
 }

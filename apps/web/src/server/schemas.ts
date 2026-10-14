@@ -102,3 +102,24 @@ export const createMockInput = z.object({
 });
 
 export const updateMockInput = createMockInput.partial().omit({ collectionId: true });
+
+export const publishDocsInput = z.object({
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9][a-z0-9-]{1,62}$/, "Use 2 to 63 lowercase letters, digits or dashes"),
+  environmentId: z.string().min(1).nullable().optional(),
+  title: z.string().trim().max(200).nullable().optional(),
+  logoUrl: z
+    .url({ protocol: /^https$/ })
+    .nullable()
+    .optional()
+    .or(z.literal("").transform(() => null)),
+  accentColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable()
+    .optional()
+    .or(z.literal("").transform(() => null)),
+});

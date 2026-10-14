@@ -7,6 +7,7 @@ export type RequestDefinition = {
   url?: string | { raw?: string };
   header?: Header[];
   body?: { mode?: string; raw?: string; options?: { raw?: { language?: string } } };
+  description?: unknown;
   [key: string]: unknown;
 };
 

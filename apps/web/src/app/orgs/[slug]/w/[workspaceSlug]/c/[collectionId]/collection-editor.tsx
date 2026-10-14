@@ -197,7 +197,15 @@ export function CollectionEditor(props: Props) {
             </Button>
           )}
         </div>
-        <div className="px-3 py-2 font-medium">{document.info.name}</div>
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="truncate font-medium">{document.info.name}</span>
+          <Link
+            href={`${props.workspaceHref}/c/${props.collectionId}/docs`}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            Docs
+          </Link>
+        </div>
         <ItemTree items={document.item} selectedId={selectedId} onSelect={setSelectedId} />
       </aside>
 
