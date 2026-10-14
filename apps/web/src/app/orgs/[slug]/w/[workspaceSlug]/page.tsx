@@ -168,9 +168,13 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
         ) : (
           <Card className="mt-3 divide-y divide-border">
             {environments.map((environment) => (
-              <div key={environment.id} className="px-3 py-2">
+              <Link
+                key={environment.id}
+                href={`/orgs/${slug}/w/${workspaceSlug}/e/${environment.id}`}
+                className="block px-3 py-2 hover:bg-muted"
+              >
                 {environment.name}
-              </div>
+              </Link>
             ))}
           </Card>
         )}

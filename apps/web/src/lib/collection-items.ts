@@ -72,3 +72,37 @@ export function withScript(item: Item, listen: ScriptEvent["listen"], code: stri
     : others;
   return { ...item, event };
 }
+
+export function removeItem(items: Item[], id: string): Item[] {
+  return items
+    .filter((item) => item.id !== id)
+    .map((item) => (item.item ? { ...item, item: removeItem(item.item, id) } : item));
+}
+
+/** Appends to a folder, or to the collection root when `parentId` is null. */
+export function insertItem(items: Item[], parentId: string | null, child: Item): Item[] {
+  if (parentId === null) return [...items, child];
+  return items.map((item) => {
+    if (item.id === parentId) return { ...item, item: [...(item.item ?? []), child] };
+    return item.item ? { ...item, item: insertItem(item.item, parentId, child) } : item;
+  });
+}
+
+/** Inserts a copy right after the original, with fresh ids everywhere. */
+export function duplicateItem(items: Item[], id: string): { items: Item[]; copy?: Item } {
+  const withNewIds = (item: Item): Item => ({
+    ...structuredClone(item),
+    id: crypto.randomUUID(),
+    item: item.item?.map(withNewIds),
+  });
+  let copy: Item | undefined;
+  const visit = (list: Item[]): Item[] =>
+    list.flatMap((item) => {
+      if (item.id === id) {
+        copy = { ...withNewIds(item), name: `${item.name} copy` };
+        return [item, copy];
+      }
+      return item.item ? [{ ...item, item: visit(item.item) }] : [item];
+    });
+  return { items: visit(items), copy };
+}

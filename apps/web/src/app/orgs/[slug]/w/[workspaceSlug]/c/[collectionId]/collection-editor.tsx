@@ -3,6 +3,11 @@
 import type { RunResult } from "@outpost/engine";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Input,
   MethodBadge,
   Select,
@@ -27,7 +32,10 @@ import {
   type CollectionDocument,
   type Header,
   type Item,
+  duplicateItem,
   findItem,
+  insertItem,
+  removeItem,
   firstRequest,
   requestOf,
   scriptOf,
@@ -122,12 +130,40 @@ export function CollectionEditor(props: Props) {
     }));
   }
 
-  function addRequest() {
-    const item: Item = { id: crypto.randomUUID(), name: "New request", request: { method: "GET", url: "" } };
-    setDocument((doc) => ({ ...doc, item: [...doc.item, item] }));
-    setSelectedId(item.id);
+  function addItem(kind: "request" | "folder", parentId: string | null = null) {
+    const item: Item =
+      kind === "folder"
+        ? { id: crypto.randomUUID(), name: "New folder", item: [] }
+        : { id: crypto.randomUUID(), name: "New request", request: { method: "GET", url: "" } };
+    setDocument((doc) => ({ ...doc, item: insertItem(doc.item, parentId, item) }));
+    if (kind === "request") setSelectedId(item.id);
     setDirty(true);
   }
+
+  const treeActions: TreeActions = {
+    add: addItem,
+    rename(id) {
+      const current = findItem(document.item, id);
+      const name = current && prompt("Name", current.name)?.trim();
+      if (!name) return;
+      setDocument((doc) => ({ ...doc, item: updateItem(doc.item, id, (item) => ({ ...item, name })) }));
+      setDirty(true);
+    },
+    duplicate(id) {
+      const { items, copy } = duplicateItem(document.item, id);
+      setDocument((doc) => ({ ...doc, item: items }));
+      if (copy && !copy.item) setSelectedId(copy.id);
+      setDirty(true);
+    },
+    remove(id) {
+      const current = findItem(document.item, id);
+      if (!current || !confirm(`Delete ${current.name}${current.item ? " and everything in it" : ""}?`)) return;
+      setDocument((doc) => ({ ...doc, item: removeItem(doc.item, id) }));
+      if (selectedId === id || (current.item && selectedId && findItem(current.item, selectedId)))
+        setSelectedId(undefined);
+      setDirty(true);
+    },
+  };
 
   const send = useCallback(async () => {
     if (!selectedId) return;
@@ -160,6 +196,8 @@ export function CollectionEditor(props: Props) {
       setDocument(saved.content);
       setVersion(saved.version);
       setDirty(false);
+      // Our own save is announced to everyone, us included, sometimes before this response arrives.
+      setNewerVersion((newer) => (newer && newer.version > saved.version ? newer : null));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -190,9 +228,17 @@ export function CollectionEditor(props: Props) {
             {props.workspaceName}
           </Link>
           {props.canEdit && (
-            <Button variant="ghost" size="sm" onClick={addRequest} aria-label="Add a request">
-              +
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" aria-label="Add">
+                  +
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => addItem("request")}>New request</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => addItem("folder")}>New folder</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
         <div className="flex items-center justify-between px-3 py-2">
@@ -210,7 +256,12 @@ export function CollectionEditor(props: Props) {
             Run
           </Link>
         </div>
-        <ItemTree items={document.item} selectedId={selectedId} onSelect={setSelectedId} />
+        <ItemTree
+          items={document.item}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          actions={props.canEdit ? treeActions : undefined}
+        />
       </aside>
 
       <section className="flex min-w-0 flex-col overflow-hidden">
@@ -352,15 +403,54 @@ export function CollectionEditor(props: Props) {
   );
 }
 
+type TreeActions = {
+  add: (kind: "request" | "folder", parentId: string | null) => void;
+  rename: (id: string) => void;
+  duplicate: (id: string) => void;
+  remove: (id: string) => void;
+};
+
+function ItemMenu({ item, actions }: { item: Item; actions: TreeActions }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="invisible shrink-0 rounded px-1.5 text-muted-foreground group-hover:visible hover:bg-background data-[state=open]:visible"
+          aria-label={`Actions for ${item.name}`}
+        >
+          ⋯
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {item.item && (
+          <>
+            <DropdownMenuItem onSelect={() => actions.add("request", item.id)}>Add request</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => actions.add("folder", item.id)}>Add folder</DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        <DropdownMenuItem onSelect={() => actions.rename(item.id)}>Rename</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => actions.duplicate(item.id)}>Duplicate</DropdownMenuItem>
+        <DropdownMenuItem variant="destructive" onSelect={() => actions.remove(item.id)}>
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function ItemTree({
   items,
   selectedId,
   onSelect,
+  actions,
   depth = 0,
 }: {
   items: Item[];
   selectedId?: string;
   onSelect: (id: string) => void;
+  actions?: TreeActions;
   depth?: number;
 }) {
   return (
@@ -368,25 +458,34 @@ function ItemTree({
       {items.map((item) =>
         item.item ? (
           <li key={item.id}>
-            <div className="truncate py-1 text-muted-foreground" style={{ paddingLeft: 12 + depth * 12 }}>
-              {item.name}
+            <div className="group flex items-center pr-2 hover:bg-muted" style={{ paddingLeft: 12 + depth * 12 }}>
+              <span className="flex-1 truncate py-1 text-muted-foreground">{item.name}</span>
+              {actions && <ItemMenu item={item} actions={actions} />}
             </div>
-            <ItemTree items={item.item} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
+            <ItemTree
+              items={item.item}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              actions={actions}
+              depth={depth + 1}
+            />
           </li>
         ) : (
           <li key={item.id}>
-            <button
-              type="button"
-              onClick={() => onSelect(item.id)}
-              className={cn(
-                "flex w-full items-center gap-2 py-1 pr-3 text-left hover:bg-muted",
-                item.id === selectedId && "bg-muted",
-              )}
+            <div
+              className={cn("group flex items-center pr-2 hover:bg-muted", item.id === selectedId && "bg-muted")}
               style={{ paddingLeft: 12 + depth * 12 }}
             >
-              <MethodBadge method={requestOf(item).method ?? "GET"} short className="w-10 shrink-0" />
-              <span className="truncate">{item.name}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => onSelect(item.id)}
+                className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
+              >
+                <MethodBadge method={requestOf(item).method ?? "GET"} short className="w-10 shrink-0" />
+                <span className="truncate">{item.name}</span>
+              </button>
+              {actions && <ItemMenu item={item} actions={actions} />}
+            </div>
           </li>
         ),
       )}
