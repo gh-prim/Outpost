@@ -5,7 +5,7 @@ import { defineConfig } from "prisma/config";
 config({ path: path.resolve(import.meta.dirname, "../../.env") });
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  schema: "prisma/schema",
   migrations: { path: "prisma/migrations" },
   // Fallback lets `prisma generate` run without a database configured.
   datasource: { url: process.env.DATABASE_URL ?? "postgresql://localhost/outpost" },

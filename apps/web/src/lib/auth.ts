@@ -5,6 +5,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
+import { auditAfterHook, auditSignIn } from "./auth-audit";
 
 const allowedGoogleDomains = (process.env.GOOGLE_ALLOWED_DOMAINS ?? "")
   .split(",")
@@ -34,6 +35,9 @@ export const auth = betterAuth({
     },
   },
   databaseHooks: {
+    session: {
+      create: { after: auditSignIn },
+    },
     user: {
       create: {
         before: async (user) => {
@@ -56,6 +60,7 @@ export const auth = betterAuth({
         });
       }
     }),
+    after: auditAfterHook,
   },
   plugins: [
     organization({ teams: { enabled: true } }),
