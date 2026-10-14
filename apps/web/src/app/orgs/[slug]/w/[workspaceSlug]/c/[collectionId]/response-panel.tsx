@@ -1,7 +1,7 @@
 "use client";
 
 import type { RunResult } from "@outpost/engine";
-import { Badge, Spinner, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@outpost/ui";
+import { Badge, Button, Spinner, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@outpost/ui";
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -19,7 +19,18 @@ function prettyBody(body: string, headers: { key: string; value: string }[]) {
   }
 }
 
-export function ResponsePanel({ result, running }: { result: RunResult | null; running: boolean }) {
+export type ExecutedRequest = RunResult["requests"][number];
+
+export function ResponsePanel({
+  result,
+  running,
+  onSaveExample,
+}: {
+  result: RunResult | null;
+  running: boolean;
+  /** Saves the response on the request, where mock servers find it. */
+  onSaveExample?: (executed: ExecutedRequest) => void;
+}) {
   if (running) {
     return (
       <div className="flex items-center justify-center gap-2 text-muted-foreground">
@@ -58,6 +69,11 @@ export function ResponsePanel({ result, running }: { result: RunResult | null; r
             <StatusBadge code={response.code} text={response.status} />
             <span>{response.timeMs} ms</span>
             <span>{formatSize(response.sizeBytes)}</span>
+            {onSaveExample && !response.bodyBase64 && (
+              <Button variant="ghost" size="sm" onClick={() => onSaveExample(executed)}>
+                Save as example
+              </Button>
+            )}
           </div>
         )}
       </div>

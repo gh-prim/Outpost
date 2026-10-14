@@ -35,7 +35,7 @@ import {
   withScript,
 } from "@/lib/collection-items";
 import { HeadersEditor } from "./headers-editor";
-import { ResponsePanel } from "./response-panel";
+import { type ExecutedRequest, ResponsePanel } from "./response-panel";
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 const NO_ENVIRONMENT = "none";
@@ -94,6 +94,31 @@ export function CollectionEditor(props: Props) {
 
   function editRequest(changes: Partial<ReturnType<typeof requestOf>>) {
     edit((item) => ({ ...item, request: { ...requestOf(item), ...changes } }));
+  }
+
+  /** Stores the response as a Collection Format v2.1 example, used by mock servers. */
+  function saveExample(executed: ExecutedRequest) {
+    const response = executed.response;
+    if (!response) return;
+    const name = prompt("Example name", `${response.code} ${response.status}`.trim());
+    if (!name) return;
+    edit((item) => ({
+      ...item,
+      response: [
+        ...((item.response as unknown[]) ?? []),
+        {
+          id: crypto.randomUUID(),
+          name,
+          originalRequest: requestOf(item),
+          code: response.code,
+          status: response.status,
+          header: response.headers.filter(
+            (h) => !["content-length", "date", "connection"].includes(h.key.toLowerCase()),
+          ),
+          body: response.body,
+        },
+      ],
+    }));
   }
 
   function addRequest() {
@@ -306,7 +331,7 @@ export function CollectionEditor(props: Props) {
               ))}
             </Tabs>
 
-            <ResponsePanel result={result} running={running} />
+            <ResponsePanel result={result} running={running} onSaveExample={props.canEdit ? saveExample : undefined} />
           </div>
         )}
       </section>

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { countRequests, toTree, type TreeNode } from "@/lib/collection-tree";
 import { listEnvironments } from "@/server/environments";
+import { listMocks } from "@/server/mocks";
 import { listMonitors } from "@/server/monitors";
 import { HttpError } from "@/server/errors";
 import { getPageOrganization } from "@/server/page";
@@ -13,6 +14,7 @@ import { getWorkspaceBySlug, listWorkspaceMembers } from "@/server/workspaces";
 import { CollectionActions } from "./collection-actions";
 import { EnvironmentActions } from "./environment-actions";
 import { LiveRefresh } from "./live-refresh";
+import { MockServers } from "./mock-servers";
 import { NewMonitorForm } from "./monitor-actions";
 import { RunHistory } from "./run-history";
 import { WorkspaceMembers } from "./workspace-members";
@@ -45,7 +47,7 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
     throw error;
   });
 
-  const [collections, environments, members, orgMembers, teams, monitors] = await Promise.all([
+  const [collections, environments, members, orgMembers, teams, monitors, mocks] = await Promise.all([
     prisma.collection.findMany({
       where: { workspaceId: workspace.id, deletedAt: null },
       select: { id: true, name: true, version: true, content: true },
@@ -59,6 +61,7 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
     }),
     prisma.team.findMany({ where: { organizationId: organization.id }, select: { id: true, name: true } }),
     listMonitors(actor, workspace.id),
+    listMocks(actor, workspace.id),
   ]);
   const candidates = [
     ...teams.map((t) => ({ value: `team:${t.id}`, label: `Team ${t.name}` })),
@@ -146,6 +149,13 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
             ))}
           </Card>
         )}
+        <MockServers
+          workspaceId={workspace.id}
+          canEdit={canEdit}
+          mocks={mocks}
+          collections={collections.map((c) => ({ id: c.id, name: c.name }))}
+          environments={environments.map((e) => ({ id: e.id, name: e.name }))}
+        />
       </section>
 
       <aside>

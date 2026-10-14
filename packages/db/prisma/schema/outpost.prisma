@@ -30,6 +30,7 @@ model Workspace {
   collections  Collection[]
   environments Environment[]
   monitors     Monitor[]
+  mockServers  MockServer[]
 
   @@unique([organizationId, slug])
   @@map("workspace")
@@ -67,8 +68,9 @@ model Collection {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  versions CollectionVersion[]
-  monitors Monitor[]
+  versions    CollectionVersion[]
+  monitors    Monitor[]
+  mockServers MockServer[]
 
   @@index([workspaceId])
   @@map("collection")
@@ -167,4 +169,24 @@ model MonitorRun {
 
   @@index([monitorId, startedAt])
   @@map("monitorRun")
+}
+
+// Answers HTTP calls at /mock/<id>/... with the examples saved in a collection.
+model MockServer {
+  id            String     @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  collectionId  String
+  collection    Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  environmentId String?
+  name          String
+  // Private mocks require an API key of someone who can view the workspace.
+  isPrivate     Boolean    @default(true)
+  // Artificial latency, to test clients against slow APIs.
+  delayMs       Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([workspaceId])
+  @@map("mockServer")
 }

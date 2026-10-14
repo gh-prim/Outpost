@@ -92,3 +92,13 @@ export const updateMonitorInput = z.object({
   enabled: z.boolean().optional(),
   webhookUrl,
 });
+
+export const createMockInput = z.object({
+  name: z.string().trim().min(1).max(200),
+  collectionId: z.string().min(1),
+  environmentId: z.string().min(1).nullable().optional(),
+  isPrivate: z.boolean().default(true),
+  delayMs: z.number().int().min(0).max(30_000).default(0),
+});
+
+export const updateMockInput = createMockInput.partial().omit({ collectionId: true });

@@ -6,6 +6,7 @@ import { guardedAgents } from "./guard";
 import type { ConsoleEntry, ExecutedRequest, RunInput, RunResult, Variable } from "./types";
 
 export type * from "./types";
+export { matchExample, type MockRequest, type MockResponse } from "./mock";
 
 // Both packages are CommonJS: Node exposes them as `default`, bundlers as named exports.
 const sdk = ((sdkModule as { default?: typeof sdkModule }).default ?? sdkModule) as typeof sdkModule;
