@@ -123,3 +123,7 @@ export const publishDocsInput = z.object({
     .optional()
     .or(z.literal("").transform(() => null)),
 });
+
+export const organizationSettingsInput = z.object({
+  enforceSso: z.boolean(),
+});

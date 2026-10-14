@@ -2,6 +2,8 @@ import { headers } from "next/headers";
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { getPageOrganization } from "@/server/page";
+import { readOrgMetadata } from "@/lib/sso-enforcement";
+import { EnforceSso } from "./enforce-sso";
 import { ProviderList } from "./provider-list";
 import { RegisterProviderForm } from "./register-provider-form";
 import { ScimPanel } from "./scim-panel";
@@ -31,6 +33,11 @@ async function SsoSettingsContent({ params }: { params: PageProps<"/orgs/[slug]/
           are added to this organization automatically.
         </p>
         <ProviderList providers={orgProviders} baseURL={baseURL} />
+        <EnforceSso
+          organizationId={organization.id}
+          initial={readOrgMetadata(organization.metadata).enforceSso === true}
+          canEnable={orgProviders.some((p) => p.domainVerified)}
+        />
         <RegisterProviderForm organizationId={organization.id} baseURL={baseURL} />
         <ScimPanel organizationId={organization.id} />
       </div>

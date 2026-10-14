@@ -8,6 +8,7 @@ import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
 import { auditAfterHook, auditSignIn } from "./auth-audit";
 import { scimPlugin } from "./auth-scim";
+import { isSsoPath, ssoRequiredFor } from "./sso-enforcement";
 
 const allowedGoogleDomains = (process.env.GOOGLE_ALLOWED_DOMAINS ?? "")
   .split(",")
@@ -39,7 +40,20 @@ export const auth = betterAuth({
   },
   databaseHooks: {
     session: {
-      create: { after: auditSignIn },
+      create: {
+        // Organizations can require SSO: then Google or password sign-in is refused for their domains.
+        before: async (session, ctx) => {
+          if (!ctx || isSsoPath(ctx.path)) return { data: session };
+          const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { email: true } });
+          if (user && (await ssoRequiredFor(user.email))) {
+            throw new APIError("FORBIDDEN", {
+              message: "Your organization requires single sign-on. Use Continue with SSO.",
+            });
+          }
+          return { data: session };
+        },
+        after: auditSignIn,
+      },
     },
     user: {
       create: {

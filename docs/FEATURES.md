@@ -10,9 +10,9 @@ Status legend: `done` (available now), `partial` (works, with the noted gaps), `
 |---|---|
 | Multi-protocol API client (HTTP, GraphQL, gRPC, WebSocket, SSE, MQTT, SOAP) | partial: HTTP |
 | MCP client (Model Context Protocol) | planned |
-| Collections, folders, environments, globals, variables | done (folders shown, not yet editable in the UI) |
+| Collections, folders, environments, globals, variables | done |
 | Pre-request and test scripts (scripting API compatible with existing collections) | done |
-| Import/export of existing collections (Collection Format v2.1) and environments | partial: collection import and API export |
+| Import/export of existing collections (Collection Format v2.1) and environments | done (collections export through the API) |
 | Specs (OpenAPI, AsyncAPI) editor and import | planned |
 | Mock servers | done (from saved examples, public or API key) |
 | Native Git sync for collections | planned |
@@ -66,7 +66,7 @@ Status legend: `done` (available now), `partial` (works, with the noted gaps), `
 | Google login, with allowed domain restriction | done |
 | SSO via SAML 2.0 (Entra ID, Okta, OneLogin, Ping, Duo, AD FS, custom) | done |
 | SSO via OIDC (Keycloak, Authentik, Zitadel, any OIDC IdP) | done |
-| Enforced SSO or mixed sign-in methods | partial: mixed methods done, enforcement planned |
+| Enforced SSO or mixed sign-in methods | done |
 | Just-in-time user provisioning | done |
 | RBAC (admin, editor, viewer) | done |
 | User groups | done (teams) |
