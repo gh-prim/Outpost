@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: outpost
+      POSTGRES_PASSWORD: outpost
+      POSTGRES_DB: outpost
+    ports:
+      - "127.0.0.1:5440:5432"
+    volumes:
+      - outpost-pg:/var/lib/postgresql/data
+
+volumes:
+  outpost-pg:
