@@ -1,4 +1,4 @@
-# Production-style deployment: PostgreSQL, migrations, then the Outpost web app.
+# Production-style deployment: PostgreSQL, migrations, the Outpost web app and its worker.
 # 1. cp .env.example .env and fill it in (BETTER_AUTH_SECRET, BETTER_AUTH_URL, POSTGRES_PASSWORD, Google or SSO settings)
 # 2. docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
 
@@ -38,6 +38,18 @@ services:
       DATABASE_URL: postgresql://outpost:${POSTGRES_PASSWORD}@postgres:5432/outpost
     ports:
       - "${OUTPOST_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: ..
+      target: worker
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql://outpost:${POSTGRES_PASSWORD}@postgres:5432/outpost
     depends_on:
       migrate:
         condition: service_completed_successfully

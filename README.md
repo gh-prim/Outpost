@@ -13,7 +13,7 @@ cp .env.example .env    # set BETTER_AUTH_SECRET, BETTER_AUTH_URL, POSTGRES_PASS
 docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
 ```
 
-This starts PostgreSQL, applies the database migrations, then serves Outpost on port 3000 (`OUTPOST_PORT` to change it). Put a TLS reverse proxy with HTTP/2 in front of it (live updates keep one connection open per tab) and set `BETTER_AUTH_URL` to the public URL.
+This starts PostgreSQL, applies the database migrations, starts the worker that runs monitors, then serves Outpost on port 3000 (`OUTPOST_PORT` to change it). Put a TLS reverse proxy with HTTP/2 in front of it (live updates keep one connection open per tab) and set `BETTER_AUTH_URL` to the public URL.
 
 ## Development
 
@@ -25,6 +25,7 @@ docker compose -p outpost -f deploy/docker-compose.dev.yml up -d   # PostgreSQL 
 pnpm install
 pnpm db:migrate
 pnpm dev                        # http://localhost:3000
+pnpm --filter @outpost/runner start   # optional: the worker that runs monitors
 ```
 
 Google login: create an OAuth client ID (type "Web application") in the Google Cloud console and add `http://localhost:3000/api/auth/callback/google` as an authorized redirect URI. Set `GOOGLE_ALLOWED_DOMAINS` to restrict sign-in to your company domains.
@@ -48,6 +49,7 @@ In CI, set `OUTPOST_SERVER` and `OUTPOST_API_KEY` instead of logging in. The exi
 - `packages/engine`: runs collections (Collection Format v2.1, `pm.*` scripts and tests) on the open source collection runtime, with outbound blocking of cloud metadata endpoints
 - `packages/ui`: design system
 - `apps/cli`: `outpost` command-line runner
+- `apps/runner`: background worker for monitors (scheduled collection runs with Slack/Teams/webhook alerts)
 
 ## License
 

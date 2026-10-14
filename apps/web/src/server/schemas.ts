@@ -67,3 +67,28 @@ export const runInput = z.object({
   environmentId: z.string().optional(),
   iterationData: z.array(z.record(z.string(), z.unknown())).max(10_000).optional(),
 });
+
+export const MONITOR_INTERVALS = [5, 10, 15, 30, 60, 360, 720, 1440] as const;
+
+const webhookUrl = z
+  .url({ protocol: /^https?$/ })
+  .max(2000)
+  .nullable()
+  .optional()
+  .or(z.literal("").transform(() => null));
+
+export const createMonitorInput = z.object({
+  name: z.string().trim().min(1).max(200),
+  collectionId: z.string().min(1),
+  environmentId: z.string().min(1).nullable().optional(),
+  intervalMinutes: z.union(MONITOR_INTERVALS.map((m) => z.literal(m))),
+  webhookUrl,
+});
+
+export const updateMonitorInput = z.object({
+  name: z.string().trim().min(1).max(200).optional(),
+  environmentId: z.string().min(1).nullable().optional(),
+  intervalMinutes: z.union(MONITOR_INTERVALS.map((m) => z.literal(m))).optional(),
+  enabled: z.boolean().optional(),
+  webhookUrl,
+});

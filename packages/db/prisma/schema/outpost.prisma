@@ -29,6 +29,7 @@ model Workspace {
   members      WorkspaceMember[]
   collections  Collection[]
   environments Environment[]
+  monitors     Monitor[]
 
   @@unique([organizationId, slug])
   @@map("workspace")
@@ -67,6 +68,7 @@ model Collection {
   deletedAt   DateTime?
 
   versions CollectionVersion[]
+  monitors Monitor[]
 
   @@index([workspaceId])
   @@map("collection")
@@ -120,4 +122,49 @@ model AuditLog {
   @@index([organizationId, createdAt])
   @@index([actorId, createdAt])
   @@map("auditLog")
+}
+
+// Scheduled run of a collection. The runner worker claims due monitors with SKIP LOCKED,
+// so several workers can run side by side.
+model Monitor {
+  id              String     @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  collectionId    String
+  collection      Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  environmentId   String?
+  name            String
+  intervalMinutes Int
+  enabled         Boolean    @default(true)
+  // Called with a JSON summary when a run fails or recovers (Slack and Teams incoming webhooks work).
+  webhookUrl      String?
+  nextRunAt       DateTime   @default(now())
+  lastStatus      String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  runs MonitorRun[]
+
+  @@index([enabled, nextRunAt])
+  @@index([workspaceId])
+  @@map("monitor")
+}
+
+model MonitorRun {
+  id          String   @id @default(cuid())
+  monitorId   String
+  monitor     Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status      String // passed, failed or error
+  requests    Int
+  failedTests Int
+  totalTests  Int
+  durationMs  Int
+  // Per request: name, method, url, status code, time, failed test names. No bodies.
+  summary     Json
+  error       String?
+  startedAt   DateTime
+  finishedAt  DateTime @default(now())
+
+  @@index([monitorId, startedAt])
+  @@map("monitorRun")
 }

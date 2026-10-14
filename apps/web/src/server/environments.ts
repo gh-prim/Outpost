@@ -1,8 +1,7 @@
-import { prisma, type Prisma, WorkspaceRole } from "@outpost/db";
+import { decryptSecret, encryptSecret, prisma, type Prisma, WorkspaceRole } from "@outpost/db";
 import type { z } from "zod";
 import { auditContext, recordAudit } from "./audit";
 import type { Actor } from "./context";
-import { decryptSecret, encryptSecret } from "./crypto";
 import { HttpError, notFound } from "./errors";
 import { publish } from "./events";
 import { hasRole, requireWorkspaceRole } from "./policy";

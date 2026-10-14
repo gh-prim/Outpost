@@ -1,8 +1,7 @@
-import { prisma, WorkspaceRole } from "@outpost/db";
+import { decryptSecret, prisma, WorkspaceRole } from "@outpost/db";
 import { runCollection, type Variable } from "@outpost/engine";
 import type { z } from "zod";
 import type { Actor } from "./context";
-import { decryptSecret } from "./crypto";
 import { notFound } from "./errors";
 import { requireWorkspaceRole } from "./policy";
 import type { runInput } from "./schemas";

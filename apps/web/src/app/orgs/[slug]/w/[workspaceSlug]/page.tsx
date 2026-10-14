@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { countRequests, toTree, type TreeNode } from "@/lib/collection-tree";
 import { listEnvironments } from "@/server/environments";
+import { listMonitors } from "@/server/monitors";
 import { HttpError } from "@/server/errors";
 import { getPageOrganization } from "@/server/page";
 import { hasRole } from "@/server/policy";
@@ -12,6 +13,8 @@ import { getWorkspaceBySlug, listWorkspaceMembers } from "@/server/workspaces";
 import { CollectionActions } from "./collection-actions";
 import { EnvironmentActions } from "./environment-actions";
 import { LiveRefresh } from "./live-refresh";
+import { NewMonitorForm } from "./monitor-actions";
+import { RunHistory } from "./run-history";
 import { WorkspaceMembers } from "./workspace-members";
 
 function Tree({ nodes }: { nodes: TreeNode[] }) {
@@ -42,7 +45,7 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
     throw error;
   });
 
-  const [collections, environments, members, orgMembers, teams] = await Promise.all([
+  const [collections, environments, members, orgMembers, teams, monitors] = await Promise.all([
     prisma.collection.findMany({
       where: { workspaceId: workspace.id, deletedAt: null },
       select: { id: true, name: true, version: true, content: true },
@@ -55,6 +58,7 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
       include: { user: { select: { id: true, name: true, email: true } } },
     }),
     prisma.team.findMany({ where: { organizationId: organization.id }, select: { id: true, name: true } }),
+    listMonitors(actor, workspace.id),
   ]);
   const candidates = [
     ...teams.map((t) => ({ value: `team:${t.id}`, label: `Team ${t.name}` })),
@@ -104,6 +108,43 @@ async function WorkspaceContent({ params }: { params: PageProps<"/orgs/[slug]/w/
               );
             })}
           </div>
+        )}
+
+        <div className="mt-10 flex items-center justify-between">
+          <h2 className="font-medium">Monitors</h2>
+          {canEdit && (
+            <NewMonitorForm
+              workspaceId={workspace.id}
+              collections={collections.map((c) => ({ id: c.id, name: c.name }))}
+              environments={environments.map((e) => ({ id: e.id, name: e.name }))}
+            />
+          )}
+        </div>
+        {monitors.length === 0 ? (
+          <p className="mt-2 text-muted-foreground">
+            No monitor. A monitor runs a collection on a schedule and alerts you when a test fails.
+          </p>
+        ) : (
+          <Card className="mt-3 divide-y divide-border">
+            {monitors.map((monitor) => (
+              <Link
+                key={monitor.id}
+                href={`/orgs/${slug}/w/${workspaceSlug}/m/${monitor.id}`}
+                className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted"
+              >
+                <span className="min-w-0">
+                  <span className="font-medium">{monitor.name}</span>
+                  <span className="ml-2 text-muted-foreground">{monitor.collection.name}</span>
+                  {!monitor.enabled && (
+                    <Badge variant="outline" className="ml-2">
+                      paused
+                    </Badge>
+                  )}
+                </span>
+                <RunHistory runs={monitor.runs} height={24} />
+              </Link>
+            ))}
+          </Card>
         )}
       </section>
 

@@ -33,6 +33,28 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  apps/runner:
+    dependencies:
+      '@outpost/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@outpost/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
+      dotenv:
+        specifier: ^17
+        version: 17.4.2
+      tsx:
+        specifier: ^4
+        version: 4.23.15
+    devDependencies:
+      '@types/node':
+        specifier: ^24
+        version: 24.19.2
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   apps/web:
     dependencies:
       '@better-auth/api-key':
