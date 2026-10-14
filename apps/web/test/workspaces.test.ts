@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { addWorkspaceMember, archiveWorkspace, createWorkspace, getWorkspace, listWorkspaces } from "@/server/workspaces";
+import {
+  addWorkspaceMember,
+  archiveWorkspace,
+  createWorkspace,
+  getWorkspace,
+  listWorkspaces,
+} from "@/server/workspaces";
 import { createOrganization, createTeam, createUser, resetDatabase } from "./fixtures";
 
 describe("workspace access", () => {
@@ -21,7 +27,11 @@ describe("workspace access", () => {
 
   it("makes the creator admin and lets organization members view organization-wide workspaces", async () => {
     const { alice, bob, org } = await setup();
-    const workspace = await createWorkspace(alice, { organizationId: org, name: "Billing", visibility: "ORGANIZATION" });
+    const workspace = await createWorkspace(alice, {
+      organizationId: org,
+      name: "Billing",
+      visibility: "ORGANIZATION",
+    });
     expect((await getWorkspace(alice, workspace.id)).role).toBe("ADMIN");
     expect((await getWorkspace(bob, workspace.id)).role).toBe("VIEWER");
   });
@@ -50,9 +60,15 @@ describe("workspace access", () => {
 
   it("refuses members from another organization and member management by non-admins", async () => {
     const { alice, bob, outsider, org } = await setup();
-    const workspace = await createWorkspace(alice, { organizationId: org, name: "Billing", visibility: "ORGANIZATION" });
+    const workspace = await createWorkspace(alice, {
+      organizationId: org,
+      name: "Billing",
+      visibility: "ORGANIZATION",
+    });
 
-    await expect(addWorkspaceMember(alice, workspace.id, { userId: outsider.userId, role: "VIEWER" })).rejects.toMatchObject({
+    await expect(
+      addWorkspaceMember(alice, workspace.id, { userId: outsider.userId, role: "VIEWER" }),
+    ).rejects.toMatchObject({
       status: 400,
     });
     await expect(addWorkspaceMember(bob, workspace.id, { userId: bob.userId, role: "ADMIN" })).rejects.toMatchObject({

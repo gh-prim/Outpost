@@ -18,6 +18,7 @@ COPY apps/desktop/package.json apps/desktop/
 COPY packages/db/package.json packages/db/
 COPY packages/engine/package.json packages/engine/
 COPY packages/ui/package.json packages/ui/
+COPY packages/vaults/package.json packages/vaults/
 # Skip postinstall scripts here: the Prisma client is generated once the schema is copied.
 RUN pnpm install --frozen-lockfile --ignore-scripts
 

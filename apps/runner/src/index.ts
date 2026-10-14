@@ -4,7 +4,8 @@ import { config } from "dotenv";
 // Same .env as the web app in development; real environment variables win.
 config({ path: path.resolve(import.meta.dirname, "../../../.env"), quiet: true });
 
-const { decryptSecret, prisma } = await import("@outpost/db");
+const { prisma } = await import("@outpost/db");
+const { resolveEnvironmentValues } = await import("@outpost/vaults");
 const { runCollection } = await import("@outpost/engine");
 const { summarize } = await import("./summary");
 const { sendWebhook } = await import("./webhook");
@@ -37,15 +38,15 @@ async function claimDueMonitors(limit: number) {
   return rows.map((r) => r.id);
 }
 
-async function environmentValues(environmentId: string | null, workspaceId: string) {
-  if (!environmentId) return [];
+/** Run variables of the monitor's environment: secrets decrypted, vault references fetched. */
+async function environmentValues(environmentId: string | null, workspaceId: string, organizationId: string) {
+  if (!environmentId) return { variables: [], errors: [] };
   const environment = await prisma.environment.findFirst({ where: { id: environmentId, workspaceId } });
-  if (!environment) return [];
-  return (environment.values as { key: string; value: string; type: string; enabled: boolean }[]).map((v) => ({
-    key: v.key,
-    value: v.type === "secret" ? decryptSecret(v.value) : v.value,
-    enabled: v.enabled,
-  }));
+  if (!environment) return { variables: [], errors: [] };
+  return resolveEnvironmentValues(
+    organizationId,
+    environment.values as { key: string; value: string; type: string; enabled: boolean }[],
+  );
 }
 
 async function runMonitor(id: string) {
@@ -53,22 +54,22 @@ async function runMonitor(id: string) {
     where: { id },
     include: {
       collection: { select: { content: true, deletedAt: true } },
-      workspace: { select: { name: true, slug: true, organization: { select: { slug: true } } } },
+      workspace: { select: { name: true, slug: true, organizationId: true, organization: { select: { slug: true } } } },
     },
   });
   if (!monitor) return;
 
   const startedAt = new Date();
-  const summary =
-    monitor.collection.deletedAt === null
-      ? summarize(
-          await runCollection({
-            collection: monitor.collection.content,
-            environment: await environmentValues(monitor.environmentId, monitor.workspaceId),
-            blockedHosts,
-          }),
-        )
-      : summarize({ requests: [], environment: [], globals: [], durationMs: 0, error: "The collection was deleted" });
+  const environment = await environmentValues(monitor.environmentId, monitor.workspaceId, monitor.workspace.organizationId);
+  const failure =
+    monitor.collection.deletedAt !== null
+      ? "The collection was deleted"
+      : environment.errors.length
+        ? `Could not read vault secrets: ${environment.errors.join("; ")}`
+        : null;
+  const summary = failure
+    ? summarize({ requests: [], environment: [], globals: [], durationMs: 0, error: failure })
+    : summarize(await runCollection({ collection: monitor.collection.content, environment: environment.variables, blockedHosts }));
 
   await prisma.$transaction([
     prisma.monitorRun.create({

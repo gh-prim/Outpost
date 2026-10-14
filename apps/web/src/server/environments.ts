@@ -4,6 +4,7 @@ import { auditContext, recordAudit } from "./audit";
 import type { Actor } from "./context";
 import { HttpError, notFound } from "./errors";
 import { publish } from "./events";
+import { environmentVariables } from "./run";
 import { hasRole, requireWorkspaceRole } from "./policy";
 import type { createEnvironmentInput, environmentValue, updateEnvironmentInput } from "./schemas";
 
@@ -70,8 +71,16 @@ export async function createEnvironment(
   return created;
 }
 
-export async function getEnvironment(actor: Actor, environmentId: string) {
-  const { environment, role } = await requireEnvironment(actor, environmentId, WorkspaceRole.VIEWER);
+/**
+ * With `resolve`, returns the values a run would use (secrets decrypted, vault references fetched),
+ * which is what the desktop app needs to run requests locally. Runners and above only.
+ */
+export async function getEnvironment(actor: Actor, environmentId: string, options: { resolve?: boolean } = {}) {
+  const required = options.resolve ? WorkspaceRole.RUNNER : WorkspaceRole.VIEWER;
+  const { environment, role } = await requireEnvironment(actor, environmentId, required);
+  if (options.resolve) {
+    return { ...environment, values: await environmentVariables(environment.workspaceId, environment.id) };
+  }
   return { ...environment, values: revealValues(environment.values, role) };
 }
 

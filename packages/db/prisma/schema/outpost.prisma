@@ -228,3 +228,23 @@ model GitSync {
 
   @@map("gitSync")
 }
+
+// External secret store referenced by environment values of type "vault":
+// "<name>:<path>#<key>", resolved when a request runs.
+model VaultIntegration {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  // "hashicorp" or "aws"
+  type           String
+  // HashiCorp: { address, namespace? }. AWS: { region }.
+  config         Json
+  // Encrypted JSON. HashiCorp: { token }. AWS: { accessKeyId, secretAccessKey, sessionToken? }.
+  credentials    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, name])
+  @@map("vaultIntegration")
+}

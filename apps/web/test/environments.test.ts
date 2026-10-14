@@ -16,7 +16,11 @@ describe("environment secrets", () => {
       { actor: runner, role: "member" },
       { actor: viewer, role: "member" },
     ]);
-    const workspace = await createWorkspace(alice, { organizationId: org, name: "Billing", visibility: "ORGANIZATION" });
+    const workspace = await createWorkspace(alice, {
+      organizationId: org,
+      name: "Billing",
+      visibility: "ORGANIZATION",
+    });
     await addWorkspaceMember(alice, workspace.id, { userId: runner.userId, role: "RUNNER" });
 
     const environment = await createEnvironment(alice, workspace.id, {

@@ -45,7 +45,8 @@ export const updateCollectionInput = z.object({
 export const environmentValue = z.object({
   key: z.string().min(1),
   value: z.string().default(""),
-  type: z.enum(["default", "secret"]).default("default"),
+  // "vault" values are references: <vault name>:<path>#<key>
+  type: z.enum(["default", "secret", "vault"]).default("default"),
   enabled: z.boolean().default(true),
 });
 
@@ -143,3 +144,22 @@ export const gitSyncInput = z.object({
   // Omitted keeps the stored token, null removes it.
   token: z.string().min(1).max(500).nullable().optional(),
 });
+
+export const vaultIntegrationInput = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("hashicorp"),
+    name: z.string().regex(/^[a-z0-9][a-z0-9-]{0,40}$/, "Lowercase letters, digits and dashes"),
+    address: z.url({ protocol: /^https?$/ }),
+    namespace: z.string().max(200).optional(),
+    token: z.string().min(1).max(1000),
+  }),
+  z.object({
+    type: z.literal("aws"),
+    name: z.string().regex(/^[a-z0-9][a-z0-9-]{0,40}$/, "Lowercase letters, digits and dashes"),
+    region: z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d$/, "An AWS region like eu-west-3"),
+    accessKeyId: z.string().min(1).max(200),
+    secretAccessKey: z.string().min(1).max(500),
+  }),
+]);
+
+export const vaultTestInput = z.object({ reference: z.string().min(1).max(1000) });

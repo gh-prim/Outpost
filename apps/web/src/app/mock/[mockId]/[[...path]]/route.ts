@@ -1,9 +1,10 @@
-import { decryptSecret, prisma, WorkspaceRole } from "@outpost/db";
+import { prisma, WorkspaceRole } from "@outpost/db";
 import { matchExample } from "@outpost/engine";
 import { connection, NextResponse, type NextRequest } from "next/server";
 import { requireActor } from "@/server/context";
 import { HttpError, toErrorResponse } from "@/server/errors";
 import { requireWorkspaceRole } from "@/server/policy";
+import { environmentVariables } from "@/server/run";
 
 type Ctx = RouteContext<"/mock/[mockId]/[[...path]]">;
 
@@ -26,16 +27,10 @@ async function handle(request: NextRequest, ctx: Ctx) {
       await requireWorkspaceRole(actor.userId, mock.workspaceId, WorkspaceRole.VIEWER);
     }
 
-    const environment = mock.environmentId
-      ? ((await prisma.environment.findUnique({ where: { id: mock.environmentId } }))?.values as
-          | { key: string; value: string; type: string; enabled: boolean }[]
-          | undefined)
-      : undefined;
-    const variables = (environment ?? []).map((v) => ({
-      key: v.key,
-      value: v.type === "secret" ? decryptSecret(v.value) : v.value,
-      enabled: v.enabled,
-    }));
+    // Vault references that fail to resolve are left empty rather than failing the mock.
+    const variables = mock.environmentId
+      ? await environmentVariables(mock.workspaceId, mock.environmentId).catch(() => [])
+      : [];
 
     const example = matchExample(mock.collection.content, variables, {
       method: request.method,
