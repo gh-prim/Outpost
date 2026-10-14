@@ -11,69 +11,90 @@
 
 ```
                 ┌──────────────────────────────┐
-  Desktop app ──┤                              │
-  (Electron)    │        Outpost server        │──── PostgreSQL (all data)
-                │  API + realtime + auth + UI  │──── Redis (queues, pub/sub)
-  Web app ──────┤                              │──── S3-compatible storage (files, exports)
-  (browser)     └──────────────┬───────────────┘
-                               │ job queue
-  CLI ───── API token   ┌──────┴───────┐
-                        │   Runners    │  monitors, scheduled runs,
-                        │ (N workers)  │  perf tests, hosted mocks
-                        └──────────────┘
+  Desktop app ──┤   Outpost web (Next.js)      │
+  (Electron)    │   UI + admin + REST API      │──┐
+                │   + Better Auth              │  │
+  Browser ──────┤                              │  ├── PostgreSQL via Prisma
+                └──────────────────────────────┘  │   (all data)
+                ┌──────────────────────────────┐  │
+  Clients ──────┤  Realtime service (WebSocket)│──┤── Redis (queues, pub/sub)
+                └──────────────────────────────┘  │
+  CLI ───── API token                             │── S3-compatible storage
+                        ┌──────────────┐          │   (files, exports)
+                        │   Runners    │──────────┘
+                        │ (N workers)  │  monitors, scheduled runs,
+                        └──────────────┘  perf tests, hosted mocks
 ```
 
 ## Components
 
-### 1. Server (`apps/server`)
+### 1. Web app and API (`apps/web`, Next.js)
 
-- Node.js 24, Fastify, Zod for validation, OpenAPI generated from the routes.
-- REST API for everything (workspaces, collections, environments, users, admin). The UI uses only the public API, so everything is scriptable.
-- Realtime collaboration over WebSocket. Each collection is a document with a version number, and clients send operations that the server orders and broadcasts. Conflicts on the same field are last write wins, with full history kept for recovery.
-- Serves the web app as static files, so one container is enough.
+- Next.js (App Router) serves the whole interface: the API client, collections, workspaces, and the admin console (users, teams, organizations, identity providers, audit logs, settings).
+- REST API in Next.js route handlers, validated with Zod, OpenAPI generated from the schemas. The UI uses only this public API, so everything is scriptable.
+- Server components for admin pages, client components for the request editor (Monaco for scripts and bodies, TanStack Query for data).
+- Runs on the default Node.js runtime, self-hosted with `next start` in a container.
 
-### 2. Authentication and identity (inside the server)
+### 2. Database (`packages/db`, Prisma)
 
-| Method | Library |
+- PostgreSQL accessed only through Prisma. The schema lives in `packages/db/prisma/schema.prisma` and is shared by the web app, the realtime service and the runners.
+- Migrations with `prisma migrate`, run automatically at container start.
+- Collection documents stored as JSONB, with a history table for version recovery.
+
+### 3. Authentication, users, teams and organizations (Better Auth)
+
+Better Auth runs inside the Next.js app with its Prisma adapter, so users, sessions, organizations and teams live in the same database.
+
+| Need | Better Auth feature |
 |---|---|
-| Email and password, optional, can be disabled | argon2 |
-| Google login, with allowed domains | OIDC via `openid-client` |
-| Generic OIDC (Keycloak, Entra ID, Okta, Authentik, Zitadel...) | `openid-client` |
-| SAML 2.0 | `@node-saml/node-saml` |
-| SCIM 2.0 provisioning | built-in endpoints (`/scim/v2/Users`, `/scim/v2/Groups`) |
+| Email and password, can be disabled | core |
+| Google login, with allowed domains | Google social provider |
+| SSO via OIDC (Keycloak, Entra ID, Okta, Authentik, Zitadel...) | `@better-auth/sso` |
+| SSO via SAML 2.0 | `@better-auth/sso` |
+| Enforced SSO per verified email domain, JIT provisioning | `@better-auth/sso` domain verification |
+| SCIM 2.0 provisioning | `@better-auth/scim` |
+| Organizations, teams, members, invitations | `organization` plugin with teams enabled |
+| Roles and permissions | `organization` plugin access control (custom roles and statements) |
+| API tokens for CLI and automation | `api-key` plugin |
+| Admin console (ban, impersonate, list users) | `admin` plugin |
+| Two-factor auth | `two-factor` plugin |
 
-- Several identity providers can be configured at once, per organization, with "enforce SSO" per verified email domain.
-- Just-in-time provisioning, IdP group to Outpost role mapping.
-- Sessions in HTTP-only cookies for the web app, short-lived tokens with refresh for desktop and CLI, personal API tokens for automation.
+- Sessions in HTTP-only cookies for the web app; API keys or bearer tokens for desktop and CLI.
 - Every security-relevant action writes to an append-only audit log table, exportable as JSON or CSV.
 
-### 3. Authorization
+### Authorization
 
 - Model: Organization > Teams > Workspaces > Collections > Folders > Requests.
-- Roles at org, workspace and element level (admin, editor, runner, viewer), assignable to users or groups.
+- Org and team roles come from Better Auth's organization plugin. Workspace and element roles (admin, editor, runner, viewer) are Outpost tables in Prisma, assignable to users or teams.
 - One policy function checks every API call, so permission rules live in one place.
 
-### 4. Execution engine (`packages/engine`)
+### Realtime collaboration (`apps/realtime`)
+
+- Small Node.js WebSocket service, separate because Next.js is not built for long-lived connections.
+- Validates the Better Auth session, then each collection is a document with a version number: clients send operations, the service orders them, saves them through Prisma and broadcasts them. Redis pub/sub lets several instances run side by side.
+- Conflicts on the same field are last write wins, with full history kept for recovery.
+
+### Execution engine (`packages/engine`)
 
 - Built on the open source Apache 2.0 collection runtime and scripting sandbox available on npm. We wrap it instead of rewriting it. This gives exact compatibility with existing collections and test scripts.
 - Same package used in three places: the desktop app, the CLI, and the runners.
 
-### 5. Clients
+### Clients
 
-- Web app (`apps/web`): React, Vite, TanStack Query, Monaco editor for scripts and bodies.
-- Desktop app (`apps/desktop`): Electron shell around the same web app. Electron rather than Tauri because the engine is a Node library. The desktop app executes requests locally, so it can reach `localhost` and internal networks and has no CORS limits.
+- Web app: the Next.js app above.
+- Desktop app (`apps/desktop`): Electron shell around the Next.js web app. Electron rather than Tauri because the engine is a Node library. The desktop app executes requests locally, so it can reach `localhost` and internal networks and has no CORS limits.
 - Browser agent: in the web app, requests to private networks go through a small local agent (same engine) or, if the admin allows it, through the server.
 - CLI (`apps/cli`): runs collections in CI, logs in with an API token, can push results to the server.
 
-### 6. Runners (`apps/runner`)
+### Runners (`apps/runner`)
 
 - Stateless workers pulling jobs from a queue (BullMQ on Redis).
 - Used for monitors, scheduled runs, distributed performance tests and hosted mock servers.
 - Deployable anywhere, including inside a private network, which gives "private runners" for free.
 
-### 7. Storage
+### Storage
 
-- PostgreSQL for all structured data, including collection documents (JSONB) and their history.
+- PostgreSQL through Prisma for all structured data, including users, orgs and collection documents.
 - Redis for queues, realtime pub/sub between server instances, and rate limiting.
 - S3-compatible storage (MinIO in the default compose file) for uploaded files, run reports and exports.
 - Secrets: encrypted at rest with a server key, with optional external vaults (HashiCorp Vault, cloud secret managers) later. A local vault on the desktop keeps personal secrets on the device.
@@ -82,13 +103,14 @@
 
 ```
 apps/
-  server/    API, realtime, auth, admin
-  web/       web UI
+  web/       Next.js: UI, admin console, REST API, Better Auth
+  realtime/  WebSocket collaboration service
   desktop/   Electron shell
   cli/       command-line runner
   runner/    background workers
 packages/
   engine/    execution wrapper around the collection runtime
+  db/        Prisma schema, migrations and client
   schema/    shared types and Zod schemas
   ui/        shared React components
 deploy/
@@ -101,16 +123,16 @@ Monorepo with pnpm workspaces and Turborepo.
 
 ## Deployment
 
-- `docker compose up` starts server, runner, PostgreSQL, Redis and MinIO.
+- `docker compose up` starts the web app, realtime service, runner, PostgreSQL, Redis and MinIO.
 - Configuration via environment variables and an optional YAML file (IdPs, allowed domains, retention).
-- Helm chart for Kubernetes, horizontal scaling of server and runners.
+- Helm chart for Kubernetes, horizontal scaling of web, realtime and runners.
 
 ## First milestone (MVP)
 
-1. Server with Postgres, organizations, workspaces, collections, environments.
-2. Auth: Google login, OIDC, SAML, enforced SSO, JIT provisioning.
-3. Basic roles and audit log.
-4. Web app: send HTTP requests, edit collections, run scripts, import existing collections.
+1. Next.js app with Prisma and PostgreSQL: workspaces, collections, environments.
+2. Better Auth: Google login, OIDC, SAML, enforced SSO, JIT provisioning, organizations and teams.
+3. Roles and audit log, admin console.
+4. Request editor: send HTTP requests, edit collections, run scripts, import existing collections.
 5. Realtime sync between two users.
 6. CLI runner.
 7. Docker compose deployment.
