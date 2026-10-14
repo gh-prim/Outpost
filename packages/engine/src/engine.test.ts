@@ -11,6 +11,15 @@ const server = createServer((req, res) => {
     res.end(JSON.stringify({ id: 42, auth: req.headers.authorization ?? null }));
     return;
   }
+  if (req.url === "/graphql") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ contentType: req.headers["content-type"], received: JSON.parse(body) }));
+    });
+    return;
+  }
   if (req.url === "/redirect") {
     res.writeHead(302, { location: "http://169.254.169.254/latest/meta-data" });
     res.end();
@@ -124,4 +133,47 @@ test("runs once per data row", async () => {
     result.requests.map((r) => JSON.parse(r.response!.body).auth),
     ["Bearer one", "Bearer two"],
   );
+});
+
+test("uses the raw URL as the source of truth and resolves path variables", async () => {
+  const result = await runCollection({
+    collection: {
+      info: { name: "Raw" },
+      item: [
+        {
+          name: "Path variable",
+          request: {
+            method: "GET",
+            // host and path are stale on purpose: raw wins.
+            url: { raw: "{{baseUrl}}/:resource", host: ["stale.example"], path: ["old"], variable: [{ key: "resource", value: "json" }] },
+          },
+        },
+      ],
+    },
+    environment: environment(),
+  });
+  assert.equal(result.requests[0].request.url, `${baseUrl}/json`);
+  assert.equal(result.requests[0].response?.code, 200);
+});
+
+test("sends GraphQL bodies as JSON with query and variables", async () => {
+  const result = await runCollection({
+    collection: {
+      info: { name: "GraphQL" },
+      item: [
+        {
+          name: "Query",
+          request: {
+            method: "POST",
+            url: "{{baseUrl}}/graphql",
+            body: { mode: "graphql", graphql: { query: "query ($id: ID!) { user(id: $id) { name } }", variables: '{"id":"7"}' } },
+          },
+        },
+      ],
+    },
+    environment: environment(),
+  });
+  const echoed = JSON.parse(result.requests[0].response!.body);
+  assert.match(echoed.contentType, /application\/json/);
+  assert.deepEqual(echoed.received, { query: "query ($id: ID!) { user(id: $id) { name } }", variables: { id: "7" } });
 });

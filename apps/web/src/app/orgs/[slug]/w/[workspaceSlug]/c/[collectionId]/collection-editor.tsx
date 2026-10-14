@@ -43,7 +43,9 @@ import {
   urlOf,
   withScript,
 } from "@/lib/collection-items";
+import { BodyEditor } from "./body-editor";
 import { HeadersEditor } from "./headers-editor";
+import { WebSocketPanel } from "./websocket-panel";
 import { type ExecutedRequest, ResponsePanel } from "./response-panel";
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
@@ -130,13 +132,16 @@ export function CollectionEditor(props: Props) {
     }));
   }
 
-  function addItem(kind: "request" | "folder", parentId: string | null = null) {
+  function addItem(kind: "request" | "folder" | "websocket", parentId: string | null = null) {
+    const id = crypto.randomUUID();
     const item: Item =
       kind === "folder"
-        ? { id: crypto.randomUUID(), name: "New folder", item: [] }
-        : { id: crypto.randomUUID(), name: "New request", request: { method: "GET", url: "" } };
+        ? { id, name: "New folder", item: [] }
+        : kind === "websocket"
+          ? { id, name: "New WebSocket", protocol: "websocket", request: { url: "" }, messages: [] }
+          : { id, name: "New request", request: { method: "GET", url: "" } };
     setDocument((doc) => ({ ...doc, item: insertItem(doc.item, parentId, item) }));
-    if (kind === "request") setSelectedId(item.id);
+    if (kind !== "folder") setSelectedId(item.id);
     setDirty(true);
   }
 
@@ -236,6 +241,7 @@ export function CollectionEditor(props: Props) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => addItem("request")}>New request</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => addItem("websocket")}>New WebSocket</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => addItem("folder")}>New folder</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -307,7 +313,15 @@ export function CollectionEditor(props: Props) {
             </Button>
           </div>
         )}
-        {!selected || !request ? (
+        {selected?.protocol === "websocket" ? (
+          <WebSocketPanel
+            key={selected.id}
+            item={selected}
+            environmentId={environmentId === NO_ENVIRONMENT ? undefined : environmentId}
+            readOnly={!props.canEdit}
+            onChange={(next) => edit(() => next)}
+          />
+        ) : !selected || !request ? (
           <p className="p-6 text-muted-foreground">Select a request, or add one with +.</p>
         ) : (
           <div className="grid min-h-0 flex-1 grid-rows-[auto_1fr_1fr]">
@@ -330,7 +344,12 @@ export function CollectionEditor(props: Props) {
               </Select>
               <Input
                 value={urlOf(request)}
-                onChange={(e) => editRequest({ url: e.target.value })}
+                onChange={(e) =>
+                  // Keep path variables and other URL fields when the URL is stored as an object.
+                  editRequest({
+                    url: typeof request.url === "object" ? { ...request.url, raw: e.target.value } : e.target.value,
+                  })
+                }
                 readOnly={!props.canEdit}
                 placeholder="https://api.example.com/resource or {{baseUrl}}/resource"
                 className="font-mono"
@@ -356,25 +375,7 @@ export function CollectionEditor(props: Props) {
                 />
               </TabsContent>
               <TabsContent value="body" className="py-2">
-                <Textarea
-                  value={request.body?.raw ?? ""}
-                  readOnly={!props.canEdit}
-                  onChange={(e) =>
-                    editRequest({
-                      body: e.target.value
-                        ? {
-                            mode: "raw",
-                            raw: e.target.value,
-                            options: request.body?.options ?? { raw: { language: "json" } },
-                          }
-                        : undefined,
-                    })
-                  }
-                  placeholder='{ "hello": "world" }'
-                  rows={8}
-                  className="font-mono"
-                  aria-label="Body"
-                />
+                <BodyEditor body={request.body} readOnly={!props.canEdit} onChange={(body) => editRequest({ body })} />
               </TabsContent>
               {(["prerequest", "test"] as const).map((listen) => (
                 <TabsContent key={listen} value={listen} className="py-2">
@@ -404,7 +405,7 @@ export function CollectionEditor(props: Props) {
 }
 
 type TreeActions = {
-  add: (kind: "request" | "folder", parentId: string | null) => void;
+  add: (kind: "request" | "folder" | "websocket", parentId: string | null) => void;
   rename: (id: string) => void;
   duplicate: (id: string) => void;
   remove: (id: string) => void;
@@ -426,6 +427,7 @@ function ItemMenu({ item, actions }: { item: Item; actions: TreeActions }) {
         {item.item && (
           <>
             <DropdownMenuItem onSelect={() => actions.add("request", item.id)}>Add request</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => actions.add("websocket", item.id)}>Add WebSocket</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => actions.add("folder", item.id)}>Add folder</DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
@@ -481,7 +483,11 @@ function ItemTree({
                 onClick={() => onSelect(item.id)}
                 className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
               >
-                <MethodBadge method={requestOf(item).method ?? "GET"} short className="w-10 shrink-0" />
+                {item.protocol === "websocket" ? (
+                  <span className="w-10 shrink-0 font-mono text-xs font-semibold text-muted-foreground">WS</span>
+                ) : (
+                  <MethodBadge method={requestOf(item).method ?? "GET"} short className="w-10 shrink-0" />
+                )}
                 <span className="truncate">{item.name}</span>
               </button>
               {actions && <ItemMenu item={item} actions={actions} />}

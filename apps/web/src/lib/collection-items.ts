@@ -6,16 +6,29 @@ export type RequestDefinition = {
   method?: string;
   url?: string | { raw?: string };
   header?: Header[];
-  body?: { mode?: string; raw?: string; options?: { raw?: { language?: string } } };
+  body?: RequestBody;
   description?: unknown;
   [key: string]: unknown;
 };
 
+export type RequestBody = {
+  mode?: string;
+  raw?: string;
+  options?: { raw?: { language?: string } };
+  graphql?: { query?: string; variables?: string };
+  urlencoded?: Header[];
+};
+
 export type ScriptEvent = { listen: "prerequest" | "test"; script: { exec?: string[] | string; type?: string } };
+
+export type WebSocketMessage = { name: string; body: string };
 
 export type Item = {
   id: string;
   name: string;
+  /** Absent for HTTP requests. */
+  protocol?: "websocket";
+  messages?: WebSocketMessage[];
   item?: Item[];
   request?: RequestDefinition | string;
   event?: ScriptEvent[];

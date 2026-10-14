@@ -7,10 +7,12 @@ export function HeadersEditor({
   headers,
   readOnly,
   onChange,
+  addLabel = "Add header",
 }: {
   headers: Header[];
   readOnly: boolean;
   onChange: (headers: Header[]) => void;
+  addLabel?: string;
 }) {
   const set = (index: number, changes: Partial<Header>) =>
     onChange(headers.map((h, i) => (i === index ? { ...h, ...changes } : h)));
@@ -53,7 +55,7 @@ export function HeadersEditor({
       ))}
       {!readOnly && (
         <Button variant="ghost" size="sm" onClick={() => onChange([...headers, { key: "", value: "" }])}>
-          Add header
+          {addLabel}
         </Button>
       )}
     </div>

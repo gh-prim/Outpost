@@ -8,12 +8,12 @@ Status legend: `done` (available now), `partial` (works, with the noted gaps), `
 
 | Feature | Status |
 |---|---|
-| Multi-protocol API client (HTTP, GraphQL, gRPC, WebSocket, SSE, MQTT, SOAP) | partial: HTTP |
+| Multi-protocol API client (HTTP, GraphQL, gRPC, WebSocket, SSE, MQTT, SOAP) | partial: HTTP, GraphQL, WebSocket |
 | MCP client (Model Context Protocol) | planned |
 | Collections, folders, environments, globals, variables | done |
 | Pre-request and test scripts (scripting API compatible with existing collections) | done |
 | Import/export of existing collections (Collection Format v2.1) and environments | done (collections export through the API) |
-| Specs (OpenAPI, AsyncAPI) editor and import | planned |
+| Specs (OpenAPI, AsyncAPI) editor and import | partial: OpenAPI 3 import |
 | Mock servers | done (from saved examples, public or API key) |
 | Native Git sync for collections | planned |
 | Visual workflows (request chaining) | planned |

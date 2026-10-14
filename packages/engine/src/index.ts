@@ -61,9 +61,35 @@ function stringify(value: unknown) {
   }
 }
 
+type UrlObject = { raw?: string; variable?: unknown[]; [key: string]: unknown };
+
+/**
+ * Outpost edits URLs through `raw`, so it is the source of truth: re-derive host, path and query
+ * from it, keeping path variable values (:id) declared on the URL. Also drops WebSocket items.
+ */
+function normalizeUrls(items: unknown): unknown {
+  if (!Array.isArray(items)) return items;
+  // WebSocket requests are interactive: the client runs them, never the collection runtime.
+  return items.filter((node) => (node as { protocol?: string })?.protocol !== "websocket").map((node) => {
+    if (!node || typeof node !== "object") return node;
+    const item = node as { item?: unknown; request?: { url?: unknown } | string };
+    const next: Record<string, unknown> = { ...item };
+    if (item.item) next.item = normalizeUrls(item.item);
+    const request = item.request;
+    if (request && typeof request === "object" && request.url && typeof request.url === "object") {
+      const url = request.url as UrlObject;
+      if (typeof url.raw === "string") {
+        next.request = { ...request, url: { ...sdk.Url.parse(url.raw), variable: url.variable ?? [] } };
+      }
+    }
+    return next;
+  });
+}
+
 /** Runs a collection (or one of its items) with the open source collection runtime. */
 export function runCollection(input: RunInput, onRequest?: (request: ExecutedRequest) => void): Promise<RunResult> {
-  const collection = new sdk.Collection(input.collection as never);
+  const source = input.collection as { item?: unknown };
+  const collection = new sdk.Collection({ ...source, item: normalizeUrls(source.item) } as never);
   const environment = toScope(input.environment);
   const globals = toScope(input.globals);
   const blockedHosts = [...ALWAYS_BLOCKED, ...(input.blockedHosts ?? [])];

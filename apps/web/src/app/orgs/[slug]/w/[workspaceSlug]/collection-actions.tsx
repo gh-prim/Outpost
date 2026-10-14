@@ -3,6 +3,7 @@
 import { Button } from "@outpost/ui";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { isOpenApi, openApiToCollection, parseApiDocument } from "@outpost/engine/openapi";
 import { apiFetch } from "@/lib/api";
 
 export function CollectionActions({ workspaceId }: { workspaceId: string }) {
@@ -20,12 +21,16 @@ export function CollectionActions({ workspaceId }: { workspaceId: string }) {
     }
   }
 
+  /** Accepts collections (v2.1 JSON) and OpenAPI 3 specs (JSON or YAML). */
   async function importFile(file: File) {
+    let document: unknown;
     try {
-      await create({ content: JSON.parse(await file.text()) });
+      document = parseApiDocument(await file.text());
     } catch {
-      setError("This file is not valid JSON");
+      setError("This file is neither valid JSON nor YAML");
+      return;
     }
+    await create({ content: isOpenApi(document) ? openApiToCollection(document) : document });
   }
 
   return (
@@ -34,7 +39,7 @@ export function CollectionActions({ workspaceId }: { workspaceId: string }) {
       <input
         ref={fileInput}
         type="file"
-        accept="application/json,.json"
+        accept="application/json,.json,.yaml,.yml"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
