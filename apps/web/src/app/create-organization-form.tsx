@@ -1,5 +1,6 @@
 "use client";
 
+import { Button, Input } from "@outpost/ui";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
@@ -34,21 +35,17 @@ export function CreateOrganizationForm() {
 
   return (
     <form onSubmit={onSubmit} className="mt-6 flex gap-2">
-      <input
+      <Input
         value={name}
         onChange={(event) => setName(event.target.value)}
         placeholder="New organization name"
         required
-        className="flex-1 rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+        className="flex-1"
       />
-      <button
-        type="submit"
-        disabled={pending || !toSlug(name)}
-        className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-      >
+      <Button type="submit" disabled={pending || !toSlug(name)}>
         Create
-      </button>
-      {error && <p className="self-center text-sm text-red-600">{error}</p>}
+      </Button>
+      {error && <p className="self-center text-sm text-destructive">{error}</p>}
     </form>
   );
 }

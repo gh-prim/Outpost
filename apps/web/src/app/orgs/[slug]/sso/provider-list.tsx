@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge, Button, Card } from "@outpost/ui";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
@@ -14,13 +15,15 @@ type Provider = {
 
 export function ProviderList({ providers, baseURL }: { providers: Provider[]; baseURL: string }) {
   if (providers.length === 0) {
-    return <p className="mt-8 text-sm text-neutral-500">No identity provider configured yet.</p>;
+    return <p className="mt-8 text-muted-foreground">No identity provider configured yet.</p>;
   }
 
   return (
     <ul className="mt-8 space-y-4">
       {providers.map((provider) => (
-        <ProviderItem key={provider.providerId} provider={provider} baseURL={baseURL} />
+        <li key={provider.providerId}>
+          <ProviderItem provider={provider} baseURL={baseURL} />
+        </li>
       ))}
     </ul>
   );
@@ -61,28 +64,28 @@ function ProviderItem({ provider, baseURL }: { provider: Provider; baseURL: stri
         ];
 
   return (
-    <li className="rounded-lg border border-neutral-200 p-4 text-sm dark:border-neutral-800">
+    <Card className="p-4">
       <div className="flex items-center justify-between">
         <span>
           <span className="font-medium">{provider.providerId}</span>
-          <span className="ml-2 rounded bg-neutral-100 px-1.5 py-0.5 text-xs uppercase dark:bg-neutral-800">
+          <Badge variant="secondary" className="ml-2 uppercase">
             {provider.type}
-          </span>
+          </Badge>
         </span>
-        <button type="button" onClick={remove} className="text-red-600 underline-offset-4 hover:underline">
+        <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={remove}>
           Delete
-        </button>
+        </Button>
       </div>
-      <dl className="mt-3 grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1 text-neutral-600 dark:text-neutral-400">
+      <dl className="mt-3 grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1 text-muted-foreground">
         <dt>Issuer</dt>
         <dd className="break-all">{provider.issuer}</dd>
         <dt>Domain</dt>
         <dd>
           {provider.domain}{" "}
           {provider.domainVerified ? (
-            <span className="text-green-600">verified</span>
+            <Badge variant="success">verified</Badge>
           ) : (
-            <span className="text-amber-600">not verified</span>
+            <Badge variant="warning">not verified</Badge>
           )}
         </dd>
         {endpoints.map(([label, value]) => (
@@ -95,27 +98,31 @@ function ProviderItem({ provider, baseURL }: { provider: Provider; baseURL: stri
 
       {!provider.domainVerified && (
         <div className="mt-4 space-y-2">
-          <p className="text-neutral-500">Sign-in is blocked until you prove you own this domain with a DNS TXT record.</p>
+          <p className="text-muted-foreground">
+            Sign-in is blocked until you prove you own this domain with a DNS TXT record.
+          </p>
           {token ? (
-            <div className="rounded bg-neutral-100 p-3 font-mono text-xs dark:bg-neutral-900">
-              <div>Name: _outpost-verification-{provider.providerId}.{provider.domain}</div>
+            <div className="rounded-md bg-muted p-3 font-mono text-xs">
+              <div>
+                Name: _outpost-verification-{provider.providerId}.{provider.domain}
+              </div>
               <div className="break-all">
                 Value: _outpost-verification-{provider.providerId}={token}
               </div>
             </div>
           ) : (
-            <button type="button" onClick={requestVerification} className="underline underline-offset-4">
+            <Button type="button" variant="outline" size="sm" onClick={requestVerification}>
               Get DNS record
-            </button>
+            </Button>
           )}
           {token && (
-            <button type="button" onClick={verify} className="underline underline-offset-4">
+            <Button type="button" size="sm" onClick={verify}>
               Verify now
-            </button>
+            </Button>
           )}
         </div>
       )}
-      {message && <p className="mt-2 text-red-600">{message}</p>}
-    </li>
+      {message && <p className="mt-2 text-destructive">{message}</p>}
+    </Card>
   );
 }

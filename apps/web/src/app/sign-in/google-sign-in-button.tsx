@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@outpost/ui";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
@@ -23,15 +24,10 @@ export function GoogleSignInButton() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={signIn}
-        disabled={pending}
-        className="w-full rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-medium hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
-      >
+      <Button type="button" variant="outline" size="lg" className="w-full" onClick={signIn} disabled={pending}>
         {pending ? "Redirecting…" : "Continue with Google"}
-      </button>
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      </Button>
+      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
     </>
   );
 }

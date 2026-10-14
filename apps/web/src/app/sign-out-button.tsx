@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@outpost/ui";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
@@ -12,8 +13,8 @@ export function SignOutButton() {
   }
 
   return (
-    <button type="button" onClick={signOut} className="underline-offset-4 hover:underline">
+    <Button type="button" variant="ghost" size="sm" onClick={signOut}>
       Sign out
-    </button>
+    </Button>
   );
 }

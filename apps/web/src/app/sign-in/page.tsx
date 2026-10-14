@@ -1,6 +1,7 @@
-import { Suspense } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Separator } from "@outpost/ui";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { GoogleSignInButton } from "./google-sign-in-button";
 import { SsoSignInForm } from "./sso-sign-in-form";
@@ -11,19 +12,21 @@ async function SignInPageContent() {
 
   return (
     <main className="flex flex-1 items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-xl border border-neutral-200 p-8 dark:border-neutral-800">
-        <h1 className="text-2xl font-semibold">Outpost</h1>
-        <p className="mt-1 text-sm text-neutral-500">Sign in to your workspace</p>
-        <div className="mt-8 space-y-6">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-xl">Outpost</CardTitle>
+          <CardDescription>Sign in to your workspace</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
           <SsoSignInForm />
-          <div className="flex items-center gap-3 text-xs text-neutral-500">
-            <span className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <Separator className="flex-1" />
             or
-            <span className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
+            <Separator className="flex-1" />
           </div>
           <GoogleSignInButton />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </main>
   );
 }

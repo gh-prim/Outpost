@@ -1,5 +1,6 @@
 "use client";
 
+import { Button, Input, Label } from "@outpost/ui";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
@@ -25,22 +26,21 @@ export function SsoSignInForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <input
-        type="email"
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
-        placeholder="you@company.com"
-        required
-        className="w-full rounded-lg border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
-      />
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-      >
+      <div className="space-y-1.5">
+        <Label htmlFor="sso-email">Work email</Label>
+        <Input
+          id="sso-email"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="you@company.com"
+          required
+        />
+      </div>
+      <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? "Redirecting…" : "Continue with SSO"}
-      </button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      </Button>
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </form>
   );
 }
