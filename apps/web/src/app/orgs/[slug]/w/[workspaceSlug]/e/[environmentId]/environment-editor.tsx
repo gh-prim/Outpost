@@ -1,12 +1,22 @@
 "use client";
 
-import { Button, Card, Checkbox, Input, Switch } from "@outpost/ui";
+import {
+  Button,
+  Card,
+  Checkbox,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@outpost/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 
-type Value = { key: string; value: string; type: "default" | "secret"; enabled: boolean };
+export type Value = { key: string; value: string; type: "default" | "secret" | "vault"; enabled: boolean };
 
 export function EnvironmentEditor(props: {
   environmentId: string;
@@ -99,7 +109,7 @@ export function EnvironmentEditor(props: {
               <th className="w-10 px-3 py-2" />
               <th className="px-3 py-2 font-medium">Variable</th>
               <th className="px-3 py-2 font-medium">Value</th>
-              <th className="px-3 py-2 font-medium">Secret</th>
+              <th className="px-3 py-2 font-medium">Type</th>
               <th className="w-10" />
             </tr>
           </thead>
@@ -129,6 +139,7 @@ export function EnvironmentEditor(props: {
                       value={v.value}
                       readOnly={!props.canEdit}
                       onChange={(e) => update(i, { value: e.target.value })}
+                      placeholder={v.type === "vault" ? "corp-vault:secret/data/app#apiKey" : undefined}
                       className="font-mono"
                     />
                     {v.type === "secret" && (
@@ -150,12 +161,20 @@ export function EnvironmentEditor(props: {
                   </div>
                 </td>
                 <td className="px-3 py-1.5">
-                  <Switch
-                    checked={v.type === "secret"}
+                  <Select
+                    value={v.type}
                     disabled={!props.canEdit}
-                    onCheckedChange={(secret) => update(i, { type: secret ? "secret" : "default" })}
-                    aria-label="Secret"
-                  />
+                    onValueChange={(type) => update(i, { type: type as Value["type"] })}
+                  >
+                    <SelectTrigger className="w-28" aria-label="Type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Plain</SelectItem>
+                      <SelectItem value="secret">Secret</SelectItem>
+                      <SelectItem value="vault">Vault</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </td>
                 <td className="px-1">
                   {props.canEdit && (
@@ -193,6 +212,7 @@ export function EnvironmentEditor(props: {
       </Card>
       <p className="mt-3 text-muted-foreground">
         Secret values are encrypted in the database, hidden from viewers and never shown in published documentation.
+        Vault values are references to a secret in one of the organization&apos;s vaults, read when a request runs.
       </p>
     </div>
   );

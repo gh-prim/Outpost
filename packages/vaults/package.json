@@ -1,0 +1,23 @@
+{
+  "name": "@outpost/vaults",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "@outpost/db": "workspace:*",
+    "aws4": "1.13.2"
+  },
+  "devDependencies": {
+    "@types/aws4": "^1",
+    "@types/node": "^24",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}

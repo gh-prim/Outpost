@@ -4,9 +4,10 @@ import { updateEnvironmentInput } from "@/server/schemas";
 
 type Ctx = RouteContext<"/api/v1/environments/[environmentId]">;
 
-export const GET = apiRoute<Ctx>(async (_request, actor, ctx) => {
+/** `?resolve=1` returns run-ready values (secrets and vault references resolved), for runners and above. */
+export const GET = apiRoute<Ctx>(async (request, actor, ctx) => {
   const { environmentId } = await ctx.params;
-  return getEnvironment(actor, environmentId);
+  return getEnvironment(actor, environmentId, { resolve: request.nextUrl.searchParams.get("resolve") === "1" });
 });
 
 export const PUT = apiRoute<Ctx>(async (request, actor, ctx) => {

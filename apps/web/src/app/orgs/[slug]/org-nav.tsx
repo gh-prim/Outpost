@@ -43,6 +43,11 @@ export function OrgNav({
             match: (p: string) => p.startsWith(`/orgs/${slug}/sso`),
           },
           {
+            href: `/orgs/${slug}/vaults`,
+            label: "Vaults",
+            match: (p: string) => p.startsWith(`/orgs/${slug}/vaults`),
+          },
+          {
             href: `/orgs/${slug}/audit`,
             label: "Audit log",
             match: (p: string) => p.startsWith(`/orgs/${slug}/audit`),

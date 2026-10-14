@@ -5,7 +5,7 @@ import { getEnvironment } from "@/server/environments";
 import { HttpError } from "@/server/errors";
 import { getPageOrganization } from "@/server/page";
 import { getWorkspaceRole, hasRole } from "@/server/policy";
-import { EnvironmentEditor } from "./environment-editor";
+import { EnvironmentEditor, type Value } from "./environment-editor";
 
 type Params = PageProps<"/orgs/[slug]/w/[workspaceSlug]/e/[environmentId]">["params"];
 
@@ -26,7 +26,7 @@ async function EnvironmentContent({ params }: { params: Params }) {
       environmentId={environment.id}
       workspaceHref={`/orgs/${slug}/w/${workspaceSlug}`}
       workspaceName={workspace.name}
-      initial={{ name: environment.name, values: environment.values, version: environment.version }}
+      initial={{ name: environment.name, values: environment.values as Value[], version: environment.version }}
       canEdit={hasRole(role, "EDITOR")}
     />
   );

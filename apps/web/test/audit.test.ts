@@ -9,7 +9,12 @@ describe("audit log", () => {
     const alice = await createUser("Alice");
     const org = await createOrganization([{ actor: alice, role: "owner" }]);
     for (let i = 0; i < 3; i++) {
-      await recordAudit({ action: `test.${i}`, organizationId: org, actorId: alice.userId, metadata: { note: 'a "quoted", value' } });
+      await recordAudit({
+        action: `test.${i}`,
+        organizationId: org,
+        actorId: alice.userId,
+        metadata: { note: 'a "quoted", value' },
+      });
     }
 
     const first = await listAuditLogs(org, { limit: 2 });

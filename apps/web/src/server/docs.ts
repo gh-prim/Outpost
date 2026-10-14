@@ -11,7 +11,8 @@ export async function docsVariables(environmentId: string | null | undefined) {
   if (!environmentId) return new Map<string, string>();
   const environment = await prisma.environment.findUnique({ where: { id: environmentId } });
   const values = (environment?.values ?? []) as { key: string; value: string; type: string; enabled: boolean }[];
-  return new Map(values.filter((v) => v.enabled && v.type !== "secret").map((v) => [v.key, v.value]));
+  // Only plain values: secrets and vault references stay as {{variables}}.
+  return new Map(values.filter((v) => v.enabled && v.type === "default").map((v) => [v.key, v.value]));
 }
 
 export async function getPublishedDocs(slug: string) {

@@ -81,7 +81,7 @@ Status legend: `done` (available now), `partial` (works, with the noted gaps), `
 |---|---|
 | Audit logs and compliance reporting, exportable | done (CSV export) |
 | Local vault (secrets never leave the client) | planned (environment secrets are encrypted at rest on the server today) |
-| Shared vault with external vaults (HashiCorp Vault, AWS Secrets Manager, Azure Key Vault) | planned |
+| Shared vault with external vaults (HashiCorp Vault, AWS Secrets Manager, Azure Key Vault) | partial: HashiCorp Vault and AWS Secrets Manager |
 | Secret scanner, local and server-side | planned |
 | Advanced secret security controls | planned |
 | Governance rules for specs and packages (Spectral linting) | planned |

@@ -1,8 +1,9 @@
-import { decryptSecret, prisma, WorkspaceRole } from "@outpost/db";
+import { prisma, WorkspaceRole } from "@outpost/db";
 import { runCollection, type Variable } from "@outpost/engine";
+import { resolveEnvironmentValues } from "@outpost/vaults";
 import type { z } from "zod";
 import type { Actor } from "./context";
-import { notFound } from "./errors";
+import { HttpError, notFound } from "./errors";
 import { requireWorkspaceRole } from "./policy";
 import type { runInput } from "./schemas";
 
@@ -12,14 +13,19 @@ const blockedHosts = (process.env.OUTPOST_BLOCKED_HOSTS ?? "")
   .map((host) => host.trim())
   .filter(Boolean);
 
-async function environmentVariables(workspaceId: string, environmentId: string): Promise<Variable[]> {
-  const environment = await prisma.environment.findFirst({ where: { id: environmentId, workspaceId } });
+/** Decrypted secrets and fetched vault references. Fails when a vault reference cannot be read. */
+export async function environmentVariables(workspaceId: string, environmentId: string): Promise<Variable[]> {
+  const environment = await prisma.environment.findFirst({
+    where: { id: environmentId, workspaceId },
+    include: { workspace: { select: { organizationId: true } } },
+  });
   if (!environment) throw notFound("Environment");
-  return (environment.values as { key: string; value: string; type: string; enabled: boolean }[]).map((v) => ({
-    key: v.key,
-    value: v.type === "secret" ? decryptSecret(v.value) : v.value,
-    enabled: v.enabled,
-  }));
+  const { variables, errors } = await resolveEnvironmentValues(
+    environment.workspace.organizationId,
+    environment.values as { key: string; value: string; type: string; enabled: boolean }[],
+  );
+  if (errors.length) throw new HttpError(502, `Could not read vault secrets: ${errors.join("; ")}`);
+  return variables;
 }
 
 /** Runs a collection, or one request of it, from the server. Needs at least the runner role. */

@@ -21,7 +21,11 @@ describe("collections", () => {
       { actor: alice, role: "member" },
       { actor: bob, role: "member" },
     ]);
-    const workspace = await createWorkspace(alice, { organizationId: org, name: "Billing", visibility: "ORGANIZATION" });
+    const workspace = await createWorkspace(alice, {
+      organizationId: org,
+      name: "Billing",
+      visibility: "ORGANIZATION",
+    });
     return { alice, bob, workspace };
   }
 
@@ -42,12 +46,16 @@ describe("collections", () => {
     const { alice, bob, workspace } = await setup();
     const collection = await createCollection(alice, workspace.id, { name: "API" });
 
-    await expect(updateCollection(bob, collection.id, { content: document("Hacked"), baseVersion: 1 })).rejects.toMatchObject({
+    await expect(
+      updateCollection(bob, collection.id, { content: document("Hacked"), baseVersion: 1 }),
+    ).rejects.toMatchObject({
       status: 403,
     });
     const saved = await updateCollection(alice, collection.id, { content: document("v2"), baseVersion: 1 });
     expect(saved.version).toBe(2);
-    await expect(updateCollection(alice, collection.id, { content: document("stale"), baseVersion: 1 })).rejects.toMatchObject({
+    await expect(
+      updateCollection(alice, collection.id, { content: document("stale"), baseVersion: 1 }),
+    ).rejects.toMatchObject({
       status: 409,
     });
   });
