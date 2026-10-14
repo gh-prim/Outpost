@@ -19,7 +19,7 @@ import {
 } from "@outpost/ui";
 import Link from "next/link";
 import { useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { execute } from "@/lib/execute";
 import type { CollectionDocument } from "@/lib/collection-items";
 
 const NONE = "none";
@@ -58,15 +58,12 @@ export function CollectionRunner(props: {
     try {
       const rows = data?.rows ?? [];
       setResult(
-        await apiFetch<RunResult>("/run", {
-          method: "POST",
-          body: {
-            workspaceId: props.workspaceId,
-            collection: props.document,
-            environmentId: environmentId === NONE ? undefined : environmentId,
-            // Without a data file, empty rows still set the number of iterations.
-            iterationData: rows.length ? rows : Array.from({ length: iterations }, () => ({})),
-          },
+        await execute({
+          workspaceId: props.workspaceId,
+          collection: props.document,
+          environmentId: environmentId === NONE ? undefined : environmentId,
+          // Without a data file, empty rows still set the number of iterations.
+          iterationData: rows.length ? rows : Array.from({ length: iterations }, () => ({})),
         }),
       );
     } catch (e) {

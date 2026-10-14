@@ -21,6 +21,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { desktopBridge, execute } from "@/lib/execute";
 import { useWorkspaceEvents } from "@/lib/use-workspace-events";
 import {
   type CollectionDocument,
@@ -134,14 +135,11 @@ export function CollectionEditor(props: Props) {
     setError(null);
     try {
       setResult(
-        await apiFetch<RunResult>("/run", {
-          method: "POST",
-          body: {
-            workspaceId: props.workspaceId,
-            collection: document,
-            itemId: selectedId,
-            environmentId: environmentId === NO_ENVIRONMENT ? undefined : environmentId,
-          },
+        await execute({
+          workspaceId: props.workspaceId,
+          collection: document,
+          itemId: selectedId,
+          environmentId: environmentId === NO_ENVIRONMENT ? undefined : environmentId,
         }),
       );
     } catch (e) {
@@ -226,6 +224,7 @@ export function CollectionEditor(props: Props) {
           />
           <div className="ml-auto flex items-center gap-2">
             {error && <span className="text-destructive">{error}</span>}
+            <RunLocation />
             <Select value={environmentId} onValueChange={setEnvironmentId}>
               <SelectTrigger className="w-44" aria-label="Environment">
                 <SelectValue />
@@ -392,5 +391,23 @@ function ItemTree({
         ),
       )}
     </ul>
+  );
+}
+
+/** Tells where Send runs requests from. Rendered after mount since only the desktop app sets the bridge. */
+function RunLocation() {
+  const [local, setLocal] = useState<boolean | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads a browser-only global once
+    setLocal(Boolean(desktopBridge()));
+  }, []);
+  if (local === null) return null;
+  return (
+    <span
+      className="text-xs text-muted-foreground"
+      title={local ? "Requests leave from this computer" : "Requests leave from the Outpost server"}
+    >
+      {local ? "Runs locally" : "Runs on server"}
+    </span>
   );
 }

@@ -42,6 +42,15 @@ outpost run <collection id> -e <environment id> -d data.csv --reporter-json repo
 
 In CI, set `OUTPOST_SERVER` and `OUTPOST_API_KEY` instead of logging in. The exit code is 1 when a request fails or a test does not pass.
 
+## Desktop app
+
+The desktop app is the Outpost web app in its own window, with one difference: requests run on your computer, so they reach `localhost` and your company network. On first launch it asks for your Outpost server address.
+
+```bash
+pnpm --filter @outpost/desktop start   # run it from source
+pnpm --filter @outpost/desktop dist    # build installers for your OS (macOS, Windows, Linux)
+```
+
 ## Stack
 
 - `apps/web`: Next.js app (UI, admin, API) with Better Auth (Google login, organizations, teams)
@@ -49,6 +58,7 @@ In CI, set `OUTPOST_SERVER` and `OUTPOST_API_KEY` instead of logging in. The exi
 - `packages/engine`: runs collections (Collection Format v2.1, `pm.*` scripts and tests) on the open source collection runtime, with outbound blocking of cloud metadata endpoints
 - `packages/ui`: design system
 - `apps/cli`: `outpost` command-line runner
+- `apps/desktop`: Electron desktop app with local request execution
 - `apps/runner`: background worker for monitors (scheduled collection runs with Slack/Teams/webhook alerts)
 
 ## License

@@ -3,7 +3,8 @@
 # The `migrate` target applies database migrations, the `worker` target runs monitors.
 
 FROM node:24-bookworm-slim AS base
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1
+# The desktop app is part of the workspace but never built in the image.
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1 ELECTRON_SKIP_BINARY_DOWNLOAD=1
 RUN corepack enable && apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -13,6 +14,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json apps/web/
 COPY apps/cli/package.json apps/cli/
 COPY apps/runner/package.json apps/runner/
+COPY apps/desktop/package.json apps/desktop/
 COPY packages/db/package.json packages/db/
 COPY packages/engine/package.json packages/engine/
 COPY packages/ui/package.json packages/ui/

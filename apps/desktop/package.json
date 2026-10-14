@@ -1,0 +1,47 @@
+{
+  "name": "@outpost/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Outpost desktop app: the Outpost web app with requests executed on this computer",
+  "license": "MIT",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node build.mjs && electron .",
+    "dist": "node build.mjs && electron-builder --publish never",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "postman-collection": "5.3.1",
+    "postman-runtime": "7.56.1"
+  },
+  "devDependencies": {
+    "@outpost/engine": "workspace:*",
+    "@types/node": "^24",
+    "electron": "44.5.0",
+    "electron-builder": "^26",
+    "esbuild": "^0.28.2",
+    "typescript": "^5"
+  },
+  "build": {
+    "appId": "dev.outpost.desktop",
+    "productName": "Outpost",
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
